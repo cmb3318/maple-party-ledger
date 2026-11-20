@@ -9,6 +9,7 @@ import {
   safeImage,
   plannedRaids,
   totals,
+  saveBossPlan,
 } from "../public/model.js";
 import { minimumPrice, maxPlayers, share } from "../public/crystals.js";
 import { onRequest } from "../functions/api/character.js";
@@ -90,6 +91,49 @@ test("planned shares respect the difficulty's entry cap and separate monthly and
   });
 });
 const name = "단풍이";
+test("one boss plan merges across nine characters without copying their clears or notes", () => {
+  const names = [
+    "첫캐",
+    "둘째",
+    "셋째",
+    "넷째",
+    "다섯",
+    "여섯",
+    "일곱",
+    "여덟",
+    "아홉",
+  ];
+  const parties = names.map((name) => ({
+    ...newParty(name),
+    targets: ["will", "papulatus"],
+    settings: { lotus: { note: name + " 메모" } },
+    clears: { lotus: "2026-11-19" },
+  }));
+  const state = { parties, squads: [{ id: "team", size: 3 }] };
+  const rows = [
+    {
+      id: "lotus",
+      included: true,
+      level: "익스트림",
+      squadId: "team",
+      size: 3,
+    },
+  ];
+  assert.equal(
+    saveBossPlan(state, names[0], rows, new Set(names.slice(1)), rows, false),
+    9,
+  );
+  for (const character of parties) {
+    assert.deepEqual(character.targets, ["will", "papulatus", "lotus"]);
+    assert.equal(character.settings.lotus.size, 2);
+    assert.equal(character.settings.lotus.squadId, "team");
+    assert.equal(character.settings.lotus.note, character.name + " 메모");
+    assert.equal(character.clears.lotus, "2026-11-19");
+  }
+  saveBossPlan(state, names[0], [], new Set([names[1]]), rows, true);
+  assert.deepEqual(parties[1].targets, ["papulatus", "lotus"]);
+  assert.ok(parties[2].targets.includes("will"));
+});
 function req(key = "", customName = name, method = "GET") {
   return onRequest({
     request: new Request(

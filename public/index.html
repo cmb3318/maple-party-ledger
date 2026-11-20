@@ -52,9 +52,11 @@
         </nav>
         <div class="tools">
           <button id="addSquad">+ 파티 추가</button
+          ><button id="openBulk" class="primary">보스 일괄 편집</button
           ><button id="showPrices">결정석 가격표</button>
         </div>
       </div>
+      <p id="boardStatus" class="muted" role="status"></p>
       <div id="board"></div>
       <p class="notice" id="warning" role="alert" hidden></p>
       <footer>
@@ -81,15 +83,102 @@
         </div>
       </form>
     </dialog>
-    <dialog id="targetsDialog" aria-labelledby="targetsTitle">
-      <form id="targetsForm">
-        <h2 id="targetsTitle">보스 선택</h2>
-        <div id="choices"></div>
-        <div class="actions">
-          <button type="button" data-close>취소</button
-          ><button class="primary">보스 저장</button>
+    <dialog id="bulkDialog" aria-labelledby="bulkTitle">
+      <div class="bulk-layout">
+        <header class="dialog-head bulk-head">
+          <h2 id="bulkTitle">보스 일괄 편집</h2>
+          <button id="closeBulk" type="button">닫기</button>
+        </header>
+        <div class="bulk-scope">
+          <label>편집할 캐릭터<select id="bulkSource"></select></label>
+          <label
+            >표에 표시<select id="bulkFilter">
+              <option value="all">전체 보스</option>
+              <option value="included">가는 보스만</option>
+            </select></label
+          >
+          <button id="bulkNewSquad" type="button">+ 새 파티</button>
         </div>
-      </form>
+        <div class="bulk-controls">
+          <div class="bulk-selection">
+            <strong id="bulkMarked" aria-live="polite"></strong>
+            <button id="markIncluded" type="button">가는 보스 체크</button>
+            <button id="clearMarks" type="button">체크 해제</button>
+          </div>
+          <div class="bulk-fields">
+            <label
+              >난이도<select id="massLevel">
+                <option value="">유지</option>
+                <option>이지</option>
+                <option>노멀</option>
+                <option>하드</option>
+                <option>카오스</option>
+                <option>익스트림</option>
+              </select></label
+            >
+            <label>파티<select id="massSquad"></select></label>
+            <label>인원<select id="massSize"></select></label>
+            <button id="applyMass" type="button">체크한 보스에 적용</button>
+            <button id="excludeMass" type="button">체크한 보스 빼기</button>
+          </div>
+          <p class="muted" id="bulkMessage" role="status"></p>
+        </div>
+        <div class="bulk-workspace">
+          <div class="bulk-scroll" tabindex="0" aria-label="보스 설정 목록">
+            <table class="bulk-table">
+              <thead>
+                <tr>
+                  <th scope="col">
+                    <input
+                      type="checkbox"
+                      id="markAll"
+                      aria-label="표에 보이는 보스 전부 체크"
+                    />
+                  </th>
+                  <th scope="col">보스</th>
+                  <th scope="col">가기</th>
+                  <th scope="col">난이도</th>
+                  <th scope="col">파티</th>
+                  <th scope="col">인원</th>
+                  <th scope="col">내 몫</th>
+                </tr>
+              </thead>
+              <tbody id="bulkRows"></tbody>
+            </table>
+          </div>
+          <details id="bulkCopy">
+            <summary id="copySummary">다른 캐릭터에도 복사</summary>
+            <div class="copy-body">
+              <div class="copy-head">
+                <label
+                  >복사 범위<select id="copyMode">
+                    <option value="merge">
+                      가는 보스 추가 · 기존 목록 유지
+                    </option>
+                    <option value="marked">체크한 보스만 맞추기</option>
+                    <option value="replace">보스 목록 전체 맞추기</option>
+                  </select></label
+                >
+                <button id="copyAll" type="button">
+                  다른 캐릭터 전부 선택
+                </button>
+              </div>
+              <div id="copyTargets" class="copy-targets"></div>
+              <p class="muted">
+                보스·난이도·파티·인원을 복사합니다. 각 캐릭터의 격파 기록과
+                메모는 유지됩니다.
+              </p>
+            </div>
+          </details>
+        </div>
+        <div class="bulk-footer">
+          <span id="bulkTotals" class="muted" aria-live="polite"></span>
+          <div class="actions">
+            <button id="saveNext" type="button">저장 후 다음 캐릭터</button>
+            <button id="saveBulk" class="primary" type="button">저장</button>
+          </div>
+        </div>
+      </div>
     </dialog>
     <dialog id="raidDialog" aria-labelledby="raidTitle">
       <form id="raidForm">

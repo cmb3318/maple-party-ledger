@@ -1,3 +1,4 @@
+import { setupBulk } from "./bulk.js";
 import {
   bosses,
   newParty,
@@ -237,8 +238,8 @@ function characterCard(character, raids) {
     ),
   );
   const controls = el("div", "", "card-controls");
-  const edit = button("보스 선택", () => openTargets(character));
-  edit.setAttribute("aria-label", character.name + " 보스 선택");
+  const edit = button("보스 편집", () => bulk.open(character.name));
+  edit.setAttribute("aria-label", character.name + " 보스 편집");
   controls.append(edit);
   const more = el("details", "", "more");
   const menu = el("summary", "관리");
@@ -263,7 +264,7 @@ function characterCard(character, raids) {
   banner.append(portrait(character), name, controls);
   card.append(banner, miniTotal(raids));
   if (!raids.length)
-    card.append(el("p", "보스 선택에서 갈 보스를 골라 주세요.", "empty"));
+    card.append(el("p", "보스 편집에서 갈 보스를 골라 주세요.", "empty"));
   for (const cycle of ["weekly", "monthly"]) {
     const list = raids.filter((raid) => raid.boss.cycle === cycle);
     if (!list.length) continue;
@@ -315,13 +316,7 @@ function squadGroup(squad, label, raids) {
   group.append(header, miniTotal(raids));
   if (squad?.note) group.append(el("p", squad.note, "group-note"));
   if (squad && !raids.length)
-    group.append(
-      el(
-        "p",
-        "캐릭터별 보기에서 보스를 선택한 다음, 보스 설정에서 이 파티를 지정하세요.",
-        "empty",
-      ),
-    );
+    group.append(el("p", "보스 일괄 편집에서 이 파티를 배정하세요.", "empty"));
   for (const boss of bossesInSquad) {
     const heading = el("div", "", "section-title with-icon");
     heading.append(
@@ -337,6 +332,7 @@ function squadGroup(squad, label, raids) {
   return group;
 }
 function render() {
+  $("openBulk").disabled = !state.parties.length;
   const focus = document.activeElement?.dataset.focus;
   const raids = plannedRaids(state);
   const { weekly, monthly } = totals(raids);
@@ -441,42 +437,6 @@ function render() {
       .querySelector('[data-focus="' + CSS.escape(focus) + '"]')
       ?.focus({ preventScroll: true });
 }
-let targetName = "";
-function openTargets(character) {
-  targetName = character.name;
-  $("targetsTitle").textContent = character.name + " · 보스 선택";
-  const choices = $("choices");
-  choices.replaceChildren();
-  for (const cycle of ["weekly", "monthly"]) {
-    choices.append(el("h3", cycleName(cycle)));
-    for (const boss of bosses.filter((item) => item.cycle === cycle)) {
-      const label = el("label");
-      const check = el("input");
-      check.type = "checkbox";
-      check.value = boss.id;
-      check.checked = character.targets.includes(boss.id);
-      label.append(check, bossIcon(boss), el("span", boss.name));
-      choices.append(label);
-    }
-  }
-  $("targetsDialog").showModal();
-}
-$("targetsForm").onsubmit = async (event) => {
-  event.preventDefault();
-  const selected = Array.from(
-    $("choices").querySelectorAll(":checked"),
-    (node) => node.value,
-  );
-  const name = targetName;
-  $("targetsDialog").close();
-  await editParty(name, (fresh) => {
-    // Keep hidden low-price entries and notes from the old checklist if a future catalog reintroduces them.
-    fresh.targets = [
-      ...fresh.targets.filter((id) => !bosses.some((boss) => boss.id === id)),
-      ...selected,
-    ];
-  });
-};
 const newSquadOption = "@new";
 let raidTarget;
 function addOptions(select, options) {
@@ -600,11 +560,13 @@ $("squadForm").onsubmit = async (event) => {
     const existing = s.squads.find((squad) => squad.id === id);
     if (existing) Object.assign(existing, { name, size, note });
     else if (!id) s.squads.push({ id: crypto.randomUUID(), name, size, note });
-    mode = "squads";
+    if (!$("bulkDialog").open) mode = "squads";
     saved = true;
   });
-  if (saved) $("squadDialog").close();
-  else {
+  if (saved) {
+    $("squadDialog").close();
+    bulk.refreshSquads(matchSquad(state, name)?.id);
+  } else {
     nameInput.setCustomValidity("이미 같은 이름의 파티가 있어요.");
     nameInput.reportValidity();
   }
@@ -683,5 +645,18 @@ window.addEventListener("storage", (event) => {
 window.addEventListener("focus", tick);
 document.addEventListener("visibilitychange", tick);
 setInterval(tick, 1000);
+const bulk = setupBulk({
+  getState: () => state,
+  update,
+  openSquad,
+  meso,
+  notify: (message) => {
+    $("boardStatus").textContent = message;
+  },
+});
+$("openBulk").onclick = () => {
+  $("boardStatus").textContent = "";
+  bulk.open();
+};
 renderPrices();
 render();

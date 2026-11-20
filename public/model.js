@@ -65,6 +65,53 @@ export function plannedRaids(state, now) {
       .map((boss) => raidFor(character, boss, state.squads, now)),
   );
 }
+export function saveBossPlan(
+  state,
+  sourceName,
+  edits,
+  recipients,
+  copies,
+  replace,
+) {
+  const source = state.parties.find(
+    (character) => character.name === sourceName,
+  );
+  if (!source) return 0;
+  const allowed = new Map(bosses.map((boss) => [boss.id, boss]));
+  const squads = new Set(state.squads.map((squad) => squad.id));
+
+  function apply(character, rows, replaceList) {
+    const targets = new Set(character.targets);
+    if (replaceList) {
+      for (const id of allowed.keys()) targets.delete(id);
+    }
+    for (const { id, included, level, squadId, size } of rows) {
+      const boss = allowed.get(id);
+      if (!boss) continue;
+      if (!included) {
+        targets.delete(id);
+        continue;
+      }
+      targets.add(id);
+      character.settings[id] = {
+        ...character.settings[id],
+        level,
+        squadId: squads.has(squadId) ? squadId : "",
+        size: Math.min(size, maxPlayers(boss, level)),
+      };
+    }
+    character.targets = [...targets];
+  }
+
+  apply(source, edits, false);
+  let count = 1;
+  for (const character of state.parties) {
+    if (character === source || !recipients.has(character.name)) continue;
+    apply(character, copies, replace);
+    count += 1;
+  }
+  return count;
+}
 export function totals(raids) {
   return raids.reduce(
     (total, raid) => {
