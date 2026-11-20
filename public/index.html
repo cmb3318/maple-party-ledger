@@ -36,23 +36,33 @@
         </div>
       </div>
       <section class="earnings" aria-label="결정석 수입" aria-live="polite">
-        <div>
-          <span>주간 예상</span><strong id="weeklyTotal"></strong
-          ><small id="weeklyCount"></small>
-        </div>
-        <div>
-          <span>주간 격파</span><strong id="weeklyDone"></strong
-          ><small id="weeklyCleared"></small>
+        <div class="earnings-period weekly">
+          <h2>주간</h2>
+          <div class="earnings-money">
+            <div><span>획득</span><strong id="weeklyDone"></strong></div>
+            <div><span>예상</span><strong id="weeklyTotal"></strong></div>
+          </div>
+          <small id="weeklyCleared"></small>
           <progress
-            id="weekProgress"
-            aria-label="이번 주 격파 진행률"
+            id="weeklyProgress"
+            aria-label="주간 결정석 메소 달성률"
             max="1"
             value="0"
           ></progress>
         </div>
-        <div>
-          <span>월간 예상</span><strong id="monthlyTotal"></strong
-          ><small id="monthlyCleared"></small>
+        <div class="earnings-period monthly">
+          <h2>월간</h2>
+          <div class="earnings-money">
+            <div><span>획득</span><strong id="monthlyDone"></strong></div>
+            <div><span>예상</span><strong id="monthlyTotal"></strong></div>
+          </div>
+          <small id="monthlyCleared"></small>
+          <progress
+            id="monthlyProgress"
+            aria-label="월간 결정석 메소 달성률"
+            max="1"
+            value="0"
+          ></progress>
         </div>
       </section>
       <p class="notice" id="cap" hidden></p>
@@ -85,7 +95,7 @@
             </button>
           </div>
           <button type="button" id="completeShown" data-check-only disabled>
-            표시된 보스 완료
+            표시된 보스 0/0
           </button>
         </div>
         <div class="finder-controls">
@@ -151,9 +161,7 @@
       <div id="quickList" class="quick-list"></div>
       <div class="quick-footer">
         <span id="quickProgress" class="muted"></span>
-        <button id="quickComplete" type="button" disabled>
-          표시된 보스 완료
-        </button>
+        <button id="quickComplete" type="button" disabled>0/0</button>
         <span id="quickNotice" role="status"></span>
         <button id="quickUndo" type="button" hidden>되돌리기</button>
         <button id="quickSync" type="button">

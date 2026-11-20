@@ -4,6 +4,19 @@ import { fetchSchedulerChanges, schedulerError } from "./scheduler.js";
 
 const $ = (id) => document.getElementById(id);
 const raidKey = (raid) => raid.character.name + "-" + raid.boss.id;
+export function labelComplete(control, raids, scope, prefix = "") {
+  const count = raids.length;
+  const cleared = raids.filter((raid) => raid.done).length;
+  const remaining = count - cleared;
+  control.textContent = prefix + cleared + "/" + count;
+  control.disabled = remaining === 0;
+  const status = scope + " " + count + "개 중 " + cleared + "개 격파";
+  control.setAttribute(
+    "aria-label",
+    remaining ? status + " · 남은 " + remaining + "개 모두 완료" : status,
+  );
+  control.title = remaining ? "남은 보스 모두 완료" : status;
+}
 const time = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul",
   month: "numeric",
@@ -19,6 +32,7 @@ export function setupRecords({
   button,
   el,
   bossIcon,
+  difficultyTag,
   partyName,
   signalRaid,
 }) {
@@ -147,20 +161,13 @@ export function setupRecords({
     row.setAttribute("aria-pressed", raid.done);
     paintParty(row, raid.squad);
     const details = el("span", "", "record-copy");
+    const title = el("span", "", "record-title");
+    title.append(el("strong", raid.boss.name), " ", difficultyTag(raid.level));
     const showName = !characterName ? raid.character.name + " · " : "";
     const monthly = raid.boss.cycle === "monthly" ? " · 월간" : "";
     details.append(
-      el("strong", raid.boss.name),
-      el(
-        "small",
-        showName +
-          raid.level +
-          " · " +
-          raid.size +
-          "인 · " +
-          partyName(raid) +
-          monthly,
-      ),
+      title,
+      el("small", showName + raid.size + "인 · " + partyName(raid) + monthly),
     );
     const recorded = raid.recorded;
     if (mode === "done" && Number.isFinite(recorded?.at)) {
@@ -202,7 +209,8 @@ export function setupRecords({
       ? raids.filter((raid) => raid.character.name === characterName)
       : raids;
     const done = scoped.filter((raid) => raid.done).length;
-    $("quickProgress").textContent = "격파 " + done + " / " + scoped.length;
+    $("quickProgress").textContent =
+      mode === "done" ? done + "/" + scoped.length : "";
     $("quickOpen").setAttribute("aria-pressed", mode === "open");
     $("quickDone").setAttribute("aria-pressed", mode === "done");
     const list = $("quickList");
@@ -224,13 +232,9 @@ export function setupRecords({
       list.append(el("p", detail, "quick-empty"));
     }
     const completeShown = $("quickComplete");
-    const pending = rows.filter((raid) => !raid.done);
     completeShown.hidden = mode === "done";
-    completeShown.disabled = !pending.length;
-    completeShown.textContent = pending.length
-      ? "표시된 " + pending.length + "개 완료"
-      : "표시된 보스 완료";
-    completeShown.onclick = () => complete(pending, now);
+    labelComplete(completeShown, scoped, "선택한 캐릭터 보스");
+    completeShown.onclick = () => complete(rows, now);
     for (const raid of rows) list.append(makeQuickRow(raid, now));
     if (focus) {
       const focused = list.querySelector(
