@@ -1,4 +1,5 @@
 import { setupBulk } from "./bulk.js";
+import { setupRecords } from "./records.js";
 import {
   bosses,
   newParty,
@@ -75,12 +76,6 @@ function update(change) {
   return navigator.locks
     ? navigator.locks.request(storageKey, apply)
     : Promise.resolve(apply());
-}
-function editParty(name, change) {
-  return update((s) => {
-    const p = s.parties.find((item) => item.name === name);
-    if (p) change(p);
-  });
 }
 function addProfile(name, profile) {
   return update((s) => {
@@ -196,24 +191,12 @@ function raidRow(raid, grouping) {
   check.setAttribute("aria-label", character.name + " " + boss.name + " 격파");
   check.dataset.focus = "check-" + key;
   const displayed = period(boss.cycle).key;
-  check.onchange = async () => {
-    const checked = check.checked;
-    await editParty(character.name, (fresh) => {
-      if (
-        !fresh.targets.includes(boss.id) ||
-        displayed !== period(boss.cycle).key
-      )
-        return;
-      if (checked) fresh.clears[boss.id] = displayed;
-      else delete fresh.clears[boss.id];
-    });
-    signalRaid(key);
-  };
-  const identity = el("div", "", "raid-identity");
+  check.onchange = () => records.toggle(raid, check.checked, displayed);
+  const identity = el("label", "", "raid-identity raid-check");
   const title = grouping === "characters" ? boss.name : character.name;
   const name = el("b", title);
   name.title = title;
-  identity.append(name);
+  identity.append(check, name);
   const controls = el("div", "", "raid-controls");
   function select(field, label, choices, selected, change) {
     const control = el("select", "", "quick-" + field);
@@ -285,13 +268,7 @@ function raidRow(raid, grouping) {
   );
   if (note) edit.title = note;
   edit.dataset.focus = "raid-" + key;
-  line.append(
-    check,
-    identity,
-    controls,
-    el("span", meso(value), "value"),
-    edit,
-  );
+  line.append(identity, controls, el("span", meso(value), "value"), edit);
   if (note) line.append(el("small", note, "raid-note"));
   return line;
 }
@@ -457,12 +434,14 @@ function render() {
     " 목 – " +
     dateFormat.format(range.end - 1) +
     " 수";
-  $("weeklyTotal").textContent = meso(weekly.planned);
+  showMoney("weeklyTotal", weekly.planned);
   $("weeklyCount").textContent = "계획 " + weekly.count + "회";
-  $("weeklyDone").textContent = meso(weekly.done);
+  showMoney("weeklyDone", weekly.done);
   $("weeklyCleared").textContent =
     "격파 " + weekly.cleared + " / " + weekly.count;
-  $("monthlyTotal").textContent = meso(monthly.planned);
+  $("weekProgress").max = weekly.count || 1;
+  $("weekProgress").value = weekly.cleared;
+  showMoney("monthlyTotal", monthly.planned);
   $("monthlyCleared").textContent = "격파 " + meso(monthly.done);
   const over = state.parties.filter(
     (character) =>
@@ -472,9 +451,7 @@ function render() {
   );
   const notices = [];
   if (over.length)
-    notices.push(
-      "주간 격파 한도(12종)를 넘긴 캐릭터 " + over.length + "명.",
-    );
+    notices.push("주간 격파 한도(12종)를 넘긴 캐릭터 " + over.length + "명.");
   if (weekly.count + monthly.count > 90)
     notices.push("일반 월드는 메이플ID당 주간 90개까지 판매할 수 있어요.");
   $("cap").hidden = !notices.length;
@@ -591,10 +568,15 @@ function render() {
   $("foldCards").setAttribute("aria-pressed", Boolean(allFolded));
   $("foldCards").textContent = allFolded ? "모두 펼치기" : "모두 접기";
   lastPeriod = period("weekly").key + period("monthly").key;
+  records.render(raids);
   if (focus)
     document
       .querySelector('[data-focus="' + CSS.escape(focus) + '"]')
       ?.focus({ preventScroll: true });
+}
+function showMoney(id, value) {
+  const unit = el("small", " 메소", "money-unit");
+  $(id).replaceChildren(el("span", number.format(value), "money-number"), unit);
 }
 function visibleCardKeys() {
   return Array.from(
@@ -901,9 +883,23 @@ const bulk = setupBulk({
     $("boardStatus").textContent = message;
   },
 });
+const records = setupRecords({
+  getState: () => state,
+  update,
+  button,
+  el,
+  bossIcon,
+  partyName,
+  signalRaid,
+});
 $("openBulk").onclick = () => {
   $("boardStatus").textContent = "";
   bulk.open();
 };
 renderPrices();
 render();
+function openRecordLink() {
+  if (location.hash === "#record") records.open();
+}
+window.addEventListener("hashchange", openRecordLink);
+openRecordLink();

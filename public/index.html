@@ -19,7 +19,10 @@
         <a class="brand" href="/"
           ><img src="/leaf.png" alt="" width="28" height="28" />단풍수첩</a
         >
-        <span id="week" class="muted week-label"></span>
+        <div class="mast-actions">
+          <span id="week" class="muted week-label"></span>
+          <button id="openQuick" class="record-button">✓ 격파 기록</button>
+        </div>
       </div>
     </header>
     <main class="shell">
@@ -38,6 +41,12 @@
         <div>
           <span>주간 격파</span><strong id="weeklyDone"></strong
           ><small id="weeklyCleared"></small>
+          <progress
+            id="weekProgress"
+            aria-label="이번 주 격파 진행률"
+            max="1"
+            value="0"
+          ></progress>
         </div>
         <div>
           <span>월간 예상</span><strong id="monthlyTotal"></strong
@@ -85,10 +94,91 @@
       <div id="board"></div>
       <p class="notice" id="warning" role="alert" hidden></p>
       <footer>
-        목요일 00:00 주간 초기화 · 매월 1일 00:00 월간 초기화 (KST) · 브라우저에
-        저장 <span>Data based on NEXON Open API</span>
+        <span>목요일 00:00 주간 초기화 · 매월 1일 00:00 월간 초기화 (KST)</span>
+        <span>Data based on NEXON Open API</span>
       </footer>
     </main>
+    <div id="recordToast" class="record-toast" hidden>
+      <span id="recordMessage" role="status"></span>
+      <button type="button" id="undoRecord">되돌리기</button>
+      <button type="button" id="dismissRecord" aria-label="저장 알림 닫기">
+        ×
+      </button>
+    </div>
+    <div class="mobile-dock">
+      <span id="mobileRemaining"></span>
+      <button id="mobileQuick" class="record-button">✓ 격파 기록</button>
+    </div>
+    <dialog id="quickDialog" aria-labelledby="quickTitle">
+      <header class="dialog-head">
+        <h2 id="quickTitle">격파 기록</h2>
+        <button type="button" data-close>닫기</button>
+      </header>
+      <div class="quick-tools">
+        <label>캐릭터<select id="quickCharacter"></select></label>
+        <div class="quick-switch" aria-label="격파 기록 보기">
+          <button id="quickOpen" type="button" aria-pressed="true">
+            남은 보스
+          </button>
+          <button id="quickDone" type="button" aria-pressed="false">
+            격파 완료
+          </button>
+        </div>
+      </div>
+      <div id="quickList" class="quick-list"></div>
+      <div class="quick-footer">
+        <span id="quickProgress" class="muted"></span>
+        <span id="quickNotice" role="status"></span>
+        <button id="quickUndo" type="button" hidden>되돌리기</button>
+        <button id="quickSync" type="button">
+          넥슨 연동 <small>실험실</small>
+        </button>
+      </div>
+    </dialog>
+    <dialog id="syncDialog" aria-labelledby="syncTitle">
+      <form id="syncForm">
+        <header class="dialog-head">
+          <h2 id="syncTitle">스케줄러 불러오기</h2>
+          <button type="button" data-close>닫기</button>
+        </header>
+        <p class="muted">
+          넥슨 ID 자동 로그인은 프렌즈 승인이 필요해요. 실험실에서는 본인 API
+          키로 등록된 캐릭터의 격파 내역을 한 번 조회해요.
+        </p>
+        <label
+          >메이플스토리 Open API 키
+          <input
+            id="syncKey"
+            type="password"
+            maxlength="256"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          />
+        </label>
+        <p class="muted">
+          키는 넥슨 공식 서버에만 전송되고 저장되지 않아요.
+          <a
+            href="https://openapi.nexon.com/ko/guide/prepare-in-advance/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >키 발급 방법</a
+          >
+        </p>
+        <div class="actions">
+          <button class="primary" id="previewSync" type="submit">
+            격파 내역 조회
+          </button>
+        </div>
+      </form>
+      <p class="muted sync-status" id="syncStatus" role="status"></p>
+      <div id="syncResults"></div>
+      <div id="syncActions" class="actions" hidden>
+        <button id="applySync" class="primary" type="button">
+          선택한 격파 반영
+        </button>
+      </div>
+    </dialog>
     <dialog id="characterDialog" aria-labelledby="characterTitle">
       <form id="add">
         <h2 id="characterTitle">캐릭터 추가</h2>

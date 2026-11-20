@@ -35,6 +35,56 @@ export function newParty(name) {
 export function isCleared(party, boss, now) {
   return party.clears[boss.id] === period(boss.cycle, now).key;
 }
+export function recordClear(state, entry, now = Date.now()) {
+  const { name, bossId, periodKey, done, source = "manual", level } = entry;
+  const boss = bosses.find((item) => item.id === bossId);
+  const character = state.parties.find((item) => item.name === name);
+  if (
+    !boss ||
+    !character?.targets.includes(bossId) ||
+    period(boss.cycle, now).key !== periodKey
+  )
+    return null;
+  if (level && raidFor(character, boss, state.squads, now).level !== level)
+    return null;
+  const previous = isCleared(character, boss, now);
+  if (previous === done) return null;
+  const details = (character.clearDetails ??= {});
+  const before = previous ? details[bossId] : undefined;
+  const after = done ? { period: periodKey, at: now, source } : undefined;
+  if (after) {
+    character.clears[bossId] = periodKey;
+    details[bossId] = after;
+  } else {
+    delete character.clears[bossId];
+    delete details[bossId];
+  }
+  return { name, bossId, periodKey, previous, before, after };
+}
+export function undoClear(state, receipt, now = Date.now()) {
+  const { name, bossId, periodKey, previous, before, after } = receipt;
+  const boss = bosses.find((item) => item.id === bossId);
+  const character = state.parties.find((item) => item.name === name);
+  if (
+    !boss ||
+    !character ||
+    period(boss.cycle, now).key !== periodKey ||
+    isCleared(character, boss, now) !== Boolean(after)
+  )
+    return false;
+  const details = (character.clearDetails ??= {});
+  if (
+    after &&
+    (details[bossId]?.at !== after.at ||
+      details[bossId]?.source !== after.source)
+  )
+    return false;
+  if (previous) character.clears[bossId] = periodKey;
+  else delete character.clears[bossId];
+  if (before) details[bossId] = before;
+  else delete details[bossId];
+  return true;
+}
 export function raidFor(character, boss, squads, now) {
   const config = character.settings[boss.id] ?? {};
   const level = boss.levels.includes(config.level)
@@ -47,6 +97,7 @@ export function raidFor(character, boss, squads, now) {
     maxPlayers(boss, level),
     config.size ?? squad?.size ?? 1,
   );
+  const done = isCleared(character, boss, now);
   return {
     boss,
     character,
@@ -55,7 +106,8 @@ export function raidFor(character, boss, squads, now) {
     size,
     note: config.note ?? "",
     value: share(boss, level, size),
-    done: isCleared(character, boss, now),
+    done,
+    recorded: done ? character.clearDetails?.[boss.id] : undefined,
   };
 }
 export function plannedRaids(state, now) {

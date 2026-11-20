@@ -232,9 +232,20 @@ dialog,
   font-size: 0.76rem;
 }
 .earnings strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.23rem;
   font-size: clamp(0.88rem, 2.1vw, 1.35rem);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
+}
+.earnings .money-number {
+  color: inherit;
+  font-size: inherit;
+}
+.earnings .money-unit {
+  white-space: nowrap;
 }
 .toolbar {
   display: flex;
@@ -607,10 +618,9 @@ dialog select:hover {
 }
 @container (min-width: 620px) {
   .raid-row {
-    grid-template-columns: 1rem minmax(0, 1fr) minmax(
-        14rem,
-        1.25fr
-      ) max-content auto;
+    grid-template-columns:
+      1rem minmax(0, 1fr) minmax(14rem, 1.25fr)
+      max-content auto;
   }
   .raid-controls {
     grid-column: 3;
@@ -1116,5 +1126,332 @@ tbody tr:nth-child(even) {
   button:active,
   summary:active {
     transform: none;
+  }
+}
+
+/* Keep the record action close even when a full roster is open. */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.mast-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+.record-button {
+  --record-base: #31514c;
+  padding: 0.4rem 0.75rem;
+  color: #b6f9df;
+  background: linear-gradient(112deg, var(--record-base), #253c3a);
+}
+.record-button:hover {
+  --record-base: #3c6b5e;
+  background: linear-gradient(112deg, var(--record-base), #294741);
+}
+.earnings > div:nth-child(2) {
+  position: relative;
+  padding-bottom: 0.6rem;
+}
+#weekProgress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: block;
+  height: 3px;
+  border: 0;
+  appearance: none;
+  background: #2a383e;
+  color: var(--mint);
+}
+#weekProgress::-webkit-progress-bar {
+  background: #2a383e;
+}
+#weekProgress::-webkit-progress-value {
+  background: linear-gradient(90deg, #5c9ca6, var(--mint));
+  transition: width 0.26s ease;
+}
+#weekProgress::-moz-progress-bar {
+  background: var(--mint);
+}
+.raid-check {
+  grid-column: 1 / 3;
+  grid-row: 1;
+  min-height: 1.54rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.13rem 0.13rem 0.13rem 0;
+}
+.raid-check:hover {
+  background: color-mix(in srgb, var(--mint) 11%, transparent);
+}
+.raid-check input {
+  flex: none;
+}
+.cleared .raid-check b {
+  color: #bde8db;
+}
+
+.mobile-dock {
+  display: none;
+}
+.record-toast {
+  position: fixed;
+  z-index: 10;
+  inset: auto max(1rem, calc((100vw - 101rem) / 2)) 1rem auto;
+  display: flex;
+  align-items: center;
+  gap: 0.43rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.45rem 0.55rem 0.45rem 0.7rem;
+  color: #c6f2e3;
+  background: #263d3e;
+  box-shadow: 0 0.5rem 1.8rem #0008;
+  animation: dialog-in 0.16s ease-out both;
+  font-size: 0.85rem;
+}
+.record-toast button {
+  background: #385652;
+}
+#dismissRecord {
+  font-size: 0.97rem;
+}
+#quickDialog {
+  --glow: var(--mint);
+  width: min(55rem, calc(100% - 1.1rem));
+}
+#quickDialog[open] {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 0.7rem;
+}
+#quickTitle,
+#syncTitle {
+  font-size: 1.18rem;
+}
+.quick-tools {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+.quick-tools label {
+  min-width: min(13rem, 100%);
+}
+.quick-switch {
+  display: flex;
+  gap: 0.2rem;
+}
+.quick-switch button[aria-pressed="true"] {
+  color: #baf7df;
+  background: #2b4a46;
+  box-shadow: inset 0 -2px #75c9ae;
+}
+.quick-list {
+  min-height: 5rem;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem;
+  align-content: start;
+  scrollbar-color: #526b64 var(--panel);
+}
+button.record-row {
+  display: grid;
+  grid-template-columns: 1.8rem minmax(0, 1fr) max-content;
+  gap: 0.55rem;
+  align-items: center;
+  text-align: left;
+  min-width: 0;
+  min-height: 3.6rem;
+  padding: 0.42rem 0.55rem;
+  background: linear-gradient(106deg, #272d3d, #212333);
+}
+button.record-row.party-colored {
+  background: linear-gradient(
+    106deg,
+    color-mix(in srgb, var(--party) 20%, #202333),
+    #212333 77%
+  );
+}
+button.record-row:hover {
+  background: linear-gradient(106deg, #2e4a48, #242b38);
+}
+button.record-row.party-colored:hover {
+  background: linear-gradient(
+    106deg,
+    color-mix(in srgb, var(--party) 29%, #26303b),
+    #222939 77%
+  );
+}
+button.record-row[aria-pressed="true"] {
+  box-shadow: inset 2px 0 var(--mint);
+  color: #c1f0de;
+}
+.record-copy {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+}
+.record-copy strong {
+  font-size: 0.94rem;
+  white-space: normal;
+}
+.record-copy small {
+  color: var(--team-ink, var(--muted));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.73rem;
+}
+.record-mark {
+  background: #2b3044;
+  color: #d0c4eb;
+  padding: 0.29rem 0.38rem;
+  font-size: 0.77rem;
+}
+[aria-pressed="true"] > .record-mark {
+  color: #b1fadc;
+  background: #31534c;
+  animation: confirmed 0.24s ease-out both;
+}
+@keyframes confirmed {
+  from {
+    transform: scale(0.87);
+    opacity: 0.65;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.quick-empty {
+  grid-column: 1/-1;
+  color: var(--muted);
+  background: #1d2130;
+  padding: 1rem;
+  text-align: center;
+}
+.quick-footer {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "progress undo sync" "notice notice notice";
+  gap: 0.2rem 0.4rem;
+}
+#quickProgress {
+  grid-area: progress;
+  font-variant-numeric: tabular-nums;
+}
+#quickNotice {
+  grid-area: notice;
+  min-height: 1.2rem;
+  font-size: 0.79rem;
+  color: #bde8d8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#quickUndo {
+  grid-area: undo;
+}
+#quickSync {
+  grid-area: sync;
+  padding-inline: 0.58rem;
+}
+#quickSync small {
+  color: #b3a6d4;
+  margin-left: 0.2rem;
+  font-size: 0.72rem;
+}
+#syncDialog {
+  --glow: #a5add4;
+}
+#syncDialog form {
+  gap: 0.5rem;
+}
+#syncKey {
+  font-size: 0.92rem;
+}
+.sync-status:not(:empty) {
+  padding: 0.5rem 0;
+}
+#syncResults {
+  display: grid;
+  gap: 0.22rem;
+  overflow: auto;
+  max-height: 31dvh;
+}
+#syncResults:not(:empty) {
+  padding: 0.2rem 0;
+}
+.sync-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #222739;
+  padding: 0.3rem 0.4rem;
+}
+.sync-unavailable p {
+  padding: 0.22rem 0.35rem;
+}
+#syncActions {
+  padding-top: 0.4rem;
+}
+@media (max-width: 650px) {
+  .earnings .money-number {
+    font-size: clamp(0.72rem, 3.2vw, 0.95rem);
+  }
+  .mast-actions #openQuick {
+    display: none;
+  }
+  .mobile-dock {
+    position: fixed;
+    z-index: 6;
+    inset: auto 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.42rem 0.55rem max(0.42rem, env(safe-area-inset-bottom));
+    background: #171c2a;
+    box-shadow: 0 -0.3rem 1.2rem #070a13a6;
+    color: #c4ccdc;
+    font-size: 0.83rem;
+  }
+  .mobile-dock button {
+    min-height: 2.45rem;
+  }
+  body {
+    padding-bottom: calc(3.4rem + env(safe-area-inset-bottom));
+  }
+  .record-toast {
+    bottom: calc(3.65rem + env(safe-area-inset-bottom));
+  }
+  #quickDialog {
+    margin: auto 0 0;
+    inset: auto 0 0;
+    width: 100%;
+    max-width: none;
+    max-height: 91dvh;
+    padding: 0.68rem 0.6rem max(0.6rem, env(safe-area-inset-bottom));
+  }
+  .quick-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .quick-tools label {
+    min-width: min(10rem, 100%);
+  }
+  button.record-row {
+    min-height: 3.35rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #weekProgress::-webkit-progress-value {
+    transition-duration: 0s;
   }
 }
