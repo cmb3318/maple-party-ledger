@@ -37,8 +37,11 @@ async function nexon(path, params, key, signal) {
   const res = await fetch(url, {
     headers: { "x-nxopen-api-key": key },
     signal,
-    redirect: "error",
+    // Workers supports manual redirect handling. Never forward the API key to a redirect target.
+    redirect: "manual",
   });
+  if (res.status >= 300 && res.status < 400)
+    throw failure("넥슨 조회 주소를 확인 중이에요. 잠시 후 다시 시도해 주세요.", 502);
   if (res.ok) return res.json();
   const body = await res.json().catch(() => ({}));
   const code = body.error?.name;
@@ -64,7 +67,8 @@ async function nexon(path, params, key, signal) {
     503,
   );
 }
-export async function onRequest({ request, env, waitUntil }) {
+export async function onRequest(context) {
+  const { request, env } = context;
   if (request.method !== "GET")
     return failure("GET 요청만 지원해요.", 405, { Allow: "GET" });
   const url = new URL(request.url);
@@ -111,7 +115,7 @@ export async function onRequest({ request, env, waitUntil }) {
       fetchedAt: Date.now(),
     };
     if (cache)
-      waitUntil(
+      context.waitUntil(
         cache
           .put(
             cacheURL.href,

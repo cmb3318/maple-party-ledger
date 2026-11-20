@@ -108,3 +108,12 @@ test("lookup distinguishes missing data, auth, quota and server interruptions", 
     fetch.mock.restore();
   }
 });
+test("a redirect ends the lookup without sending credentials to another host", async (t) => {
+  const upstream = t.mock.method(globalThis, "fetch", async (url, options) => {
+    assert.equal(url.origin, "https://open.api.nexon.com");
+    assert.equal(options.redirect, "manual");
+    return Response.redirect("https://example.test/moved", 302);
+  });
+  assert.equal((await req("stub")).status, 502);
+  assert.equal(upstream.mock.callCount(), 1);
+});
