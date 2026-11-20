@@ -44,6 +44,8 @@ function load() {
 }
 let state = load();
 let mode = "characters";
+let interaction = "check";
+let displayedChecks = [];
 let busy = false;
 const folded = new Set();
 let partyFilter = "";
@@ -179,24 +181,61 @@ function bossIcon(boss) {
   image.src = "/badges/" + boss.id + ".png";
   return image;
 }
-function raidRow(raid, grouping) {
+function raidRow(raid, grouping, now) {
   const { boss, character, level, size, value, done, note, squad } = raid;
-  const line = el("div", "", "raid-row" + (done ? " cleared" : ""));
-  paintParty(line, squad);
   const key = character.name + "-" + boss.id;
-  line.dataset.raid = key;
-  const check = el("input");
-  check.type = "checkbox";
-  check.checked = done;
-  check.setAttribute("aria-label", character.name + " " + boss.name + " 격파");
-  check.dataset.focus = "check-" + key;
-  const displayed = period(boss.cycle).key;
-  check.onchange = () => records.toggle(raid, check.checked, displayed);
-  const identity = el("label", "", "raid-identity raid-check");
-  const title = grouping === "characters" ? boss.name : character.name;
+  const title = grouping === "bosses" ? character.name : boss.name;
   const name = el("b", title);
   name.title = title;
-  identity.append(check, name);
+  if (interaction === "check") {
+    displayedChecks.push(raid);
+    const displayed = period(boss.cycle, now).key;
+    const line = button(
+      "",
+      () => records.toggle(raid, !done, displayed),
+      "raid-row check-row" + (done ? " cleared" : ""),
+    );
+    paintParty(line, squad);
+    line.dataset.raid = key;
+    line.dataset.focus = "check-" + key;
+    line.setAttribute("aria-pressed", done);
+    line.setAttribute(
+      "aria-label",
+      [
+        character.name,
+        level,
+        boss.name,
+        partyName(raid),
+        size + "인",
+        note,
+        meso(value),
+      ]
+        .filter(Boolean)
+        .join(" · "),
+    );
+    const mark = el("span", done ? "✓" : "", "check-mark");
+    mark.setAttribute("aria-hidden", "true");
+    const identity = el("span", "", "check-identity");
+    identity.append(
+      grouping === "bosses" ? portrait(character) : bossIcon(boss),
+      name,
+    );
+    const details = el("span", "", "check-details");
+    details.append(
+      el("span", level),
+      el("span", partyName(raid), "raid-party"),
+      el("span", size + "인"),
+    );
+    line.append(mark, identity, details, el("span", meso(value), "value"));
+    if (note) line.append(el("span", note, "raid-note"));
+    return line;
+  }
+  const line = el("div", "", "raid-row setup-row");
+  paintParty(line, squad);
+  line.dataset.raid = key;
+  const identity = el("span", "", "raid-identity");
+  if (grouping !== "bosses") identity.append(bossIcon(boss));
+  identity.append(name);
   const controls = el("div", "", "raid-controls");
   function select(field, label, choices, selected, change) {
     const control = el("select", "", "quick-" + field);
@@ -300,7 +339,19 @@ function miniTotal(raids) {
   if (monthly.count) node.append(el("span", "월간 " + meso(monthly.planned)));
   return node;
 }
-function characterCard(character, raids) {
+function completeButton(raids, now, focusKey, scope) {
+  const remaining = raids.filter((raid) => !raid.done).length;
+  if (interaction !== "check" || !remaining) return null;
+  const action = button(
+    remaining + "개 완료",
+    () => records.complete(raids, now),
+    "scope-complete",
+  );
+  action.dataset.focus = "complete-" + focusKey;
+  action.setAttribute("aria-label", scope + " 보스 " + remaining + "개 완료");
+  return action;
+}
+function characterCard(character, raids, now) {
   const card = el("article", "", "card character");
   const key = "character-" + character.name;
   const banner = el("div", "", "character-head");
@@ -321,7 +372,6 @@ function characterCard(character, raids) {
   const controls = el("div", "", "card-controls");
   const edit = button("보스 편집", () => bulk.open(character.name));
   edit.setAttribute("aria-label", character.name + " 보스 편집");
-  controls.append(edit);
   const more = el("details", "", "more");
   const menu = el("summary", "관리");
   const menuBody = el("div", "", "menu");
@@ -341,13 +391,17 @@ function characterCard(character, raids) {
     ),
   );
   more.append(menu, menuBody);
-  controls.append(more);
+  if (interaction === "settings") controls.append(edit, more);
+  if (!folded.has(key)) {
+    const action = completeButton(raids, now, key, character.name);
+    if (action) controls.append(action);
+  }
   controls.append(collapseControl(card, key, character.name));
   banner.append(portrait(character), name, controls);
   card.append(banner, miniTotal(raids));
   if (folded.has(key)) return card;
   if (!raids.length)
-    card.append(el("p", "보스 편집에서 갈 보스를 골라 주세요.", "empty"));
+    card.append(el("p", "설정 모드에서 갈 보스를 골라 주세요.", "empty"));
   for (const cycle of ["weekly", "monthly"]) {
     const list = raids.filter((raid) => raid.boss.cycle === cycle);
     if (!list.length) continue;
@@ -359,7 +413,7 @@ function characterCard(character, raids) {
         "section-title",
       ),
     );
-    list.forEach((raid) => card.append(raidRow(raid, "characters")));
+    list.forEach((raid) => card.append(raidRow(raid, "characters", now)));
   }
   return card;
 }
@@ -371,19 +425,23 @@ function groupHeader(title, subtitle = "") {
   heading.append(copy);
   return heading;
 }
-function bossGroup(boss, raids) {
+function bossGroup(boss, raids, now) {
   const group = el("article", "", "card group boss-card");
   const key = "boss-" + boss.id;
   const header = groupHeader(boss.name, cycleName(boss.cycle));
   header.prepend(bossIcon(boss));
   header.append(miniTotal(raids));
+  if (!folded.has(key)) {
+    const action = completeButton(raids, now, key, boss.name);
+    if (action) header.append(action);
+  }
   header.append(collapseControl(group, key, boss.name));
   group.append(header);
   if (folded.has(key)) return group;
-  raids.forEach((raid) => group.append(raidRow(raid, "bosses")));
+  raids.forEach((raid) => group.append(raidRow(raid, "bosses", now)));
   return group;
 }
-function squadGroup(squad, label, raids) {
+function squadGroup(squad, label, raids, now) {
   const group = el("article", "", "card group");
   const key = "squad-" + (squad?.id || label);
   paintParty(group, squad);
@@ -394,41 +452,65 @@ function squadGroup(squad, label, raids) {
     ? bossesInSquad.map((boss) => boss.name).join(" · ")
     : "배정된 보스 없음";
   const header = groupHeader(label, summary);
-  if (squad) {
-    const controls = el("div", "", "group-actions");
+  const controls = el("div", "", "group-actions");
+  if (squad && interaction === "settings") {
     const edit = button("파티 편집", () => openSquad(squad));
     edit.setAttribute("aria-label", squad.name + " 편집");
     controls.append(edit);
-    controls.append(collapseControl(group, key, label));
-    header.append(controls);
-  } else {
-    header.append(collapseControl(group, key, label));
   }
+  if (!folded.has(key)) {
+    const action = completeButton(raids, now, key, label);
+    if (action) controls.append(action);
+  }
+  controls.append(collapseControl(group, key, label));
+  header.append(controls);
   group.append(header, miniTotal(raids));
   if (squad?.note) group.append(el("p", squad.note, "group-note"));
   if (folded.has(key)) return group;
   if (squad && !raids.length)
-    group.append(el("p", "보스 일괄 편집에서 이 파티를 배정하세요.", "empty"));
-  for (const boss of bossesInSquad) {
-    const heading = el("div", "", "section-title with-icon");
-    heading.append(
-      bossIcon(boss),
-      el("h3", boss.name),
-      el("span", cycleName(boss.cycle), "muted"),
+    group.append(
+      el("p", "설정 모드의 보스 일괄 편집에서 이 파티를 배정하세요.", "empty"),
     );
-    group.append(heading);
-    raids
-      .filter((raid) => raid.boss === boss)
-      .forEach((raid) => group.append(raidRow(raid, "squads")));
+  for (const character of state.parties) {
+    const list = raids.filter((raid) => raid.character === character);
+    if (!list.length) continue;
+    const section = el("section", "", "squad-character");
+    const heading = el("div", "", "squad-character-head");
+    heading.append(
+      portrait(character),
+      el("h3", character.name),
+      el(
+        "span",
+        list.filter((raid) => raid.done).length + " / " + list.length,
+        "squad-progress",
+      ),
+    );
+    section.append(heading);
+    list.forEach((raid) => section.append(raidRow(raid, "squads", now)));
+    group.append(section);
   }
   return group;
 }
 function render() {
+  const now = Date.now();
+  displayedChecks = [];
+  document.body.dataset.interaction = interaction;
+  document.querySelectorAll("[data-settings-only]").forEach((node) => {
+    node.hidden = interaction !== "settings";
+  });
+  document.querySelectorAll("[data-check-only]").forEach((node) => {
+    node.hidden = interaction !== "check";
+  });
+  for (const control of $("interactionModes").children)
+    control.setAttribute(
+      "aria-pressed",
+      control.dataset.interaction === interaction,
+    );
   $("openBulk").disabled = !state.parties.length;
   const focus = document.activeElement?.dataset.focus;
-  const raids = plannedRaids(state);
+  const raids = plannedRaids(state, now);
   const { weekly, monthly } = totals(raids);
-  const range = period("weekly");
+  const range = period("weekly", now);
   $("week").textContent =
     dateFormat.format(range.start) +
     " 목 – " +
@@ -469,7 +551,7 @@ function render() {
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean);
-  const hideDone = $("hideDone").checked;
+  const hideDone = interaction === "check" && $("hideDone").checked;
   const filtering = Boolean(terms.length || partyFilter || hideDone);
   const visible = raids.filter((raid) => {
     if (hideDone && raid.done) return false;
@@ -500,7 +582,7 @@ function render() {
         terms.length &&
         terms.every((term) => character.name.toLowerCase().includes(term));
       if (list.length || !filtering || matchingName)
-        board.append(characterCard(character, list));
+        board.append(characterCard(character, list, now));
     }
   } else if (mode === "squads") {
     for (const squad of state.squads) {
@@ -510,18 +592,18 @@ function render() {
         !filtering ||
         (!hideDone && !terms.length && partyFilter === squad.id)
       )
-        board.append(squadGroup(squad, squad.name, list));
+        board.append(squadGroup(squad, squad.name, list, now));
     }
     for (const label of ["솔로", "파티 미지정"]) {
       const list = visible.filter(
         (raid) => !raid.squad && partyName(raid) === label,
       );
-      if (list.length) board.append(squadGroup(null, label, list));
+      if (list.length) board.append(squadGroup(null, label, list, now));
     }
   } else {
     bosses.forEach((boss) => {
       const list = visible.filter((raid) => raid.boss === boss);
-      if (list.length) board.append(bossGroup(boss, list));
+      if (list.length) board.append(bossGroup(boss, list, now));
     });
   }
   if (!board.children.length) {
@@ -539,7 +621,14 @@ function render() {
     } else if (mode === "squads") {
       box.append(
         el("h2", "등록된 파티가 없어요"),
-        button("+ 파티 추가", () => openSquad(), "primary"),
+        button(
+          "+ 파티 추가",
+          () => {
+            setInteraction("settings");
+            openSquad();
+          },
+          "primary",
+        ),
       );
     } else if (!state.parties.length) {
       box.append(
@@ -549,7 +638,14 @@ function render() {
           "닉네임으로 캐릭터 이미지를 가져오고 함께 갈 보스를 고를 수 있어요.",
           "muted",
         ),
-        button("캐릭터 추가", () => openCharacter(), "primary"),
+        button(
+          "캐릭터 추가",
+          () => {
+            setInteraction("settings");
+            openCharacter();
+          },
+          "primary",
+        ),
       );
     } else {
       box.append(
@@ -562,13 +658,19 @@ function render() {
     }
     board.append(box);
   }
+  const pending = displayedChecks.filter((raid) => !raid.done);
+  $("completeShown").disabled = !pending.length;
+  $("completeShown").textContent = pending.length
+    ? "표시된 " + pending.length + "개 완료"
+    : "표시된 보스 완료";
+  $("completeShown").onclick = () => records.complete(pending, now);
   const keys = visibleCardKeys();
   const allFolded = keys.length && keys.every((key) => folded.has(key));
   $("foldCards").disabled = !keys.length;
   $("foldCards").setAttribute("aria-pressed", Boolean(allFolded));
   $("foldCards").textContent = allFolded ? "모두 펼치기" : "모두 접기";
-  lastPeriod = period("weekly").key + period("monthly").key;
-  records.render(raids);
+  lastPeriod = period("weekly", now).key + period("monthly", now).key;
+  records.render(raids, now);
   if (focus)
     document
       .querySelector('[data-focus="' + CSS.escape(focus) + '"]')
@@ -859,6 +961,17 @@ $("modes").onclick = (event) => {
     },
   );
 };
+function setInteraction(next) {
+  if (interaction === next) return;
+  interaction = next;
+  $("recordToast").hidden = true;
+  $("boardStatus").textContent = "";
+  render();
+}
+$("interactionModes").onclick = (event) => {
+  if (event.target.dataset.interaction)
+    setInteraction(event.target.dataset.interaction);
+};
 document.querySelectorAll("[data-close]").forEach((control) => {
   control.onclick = () => control.closest("dialog").close();
 });
@@ -885,6 +998,7 @@ const bulk = setupBulk({
 });
 const records = setupRecords({
   getState: () => state,
+  canRecord: () => interaction === "check",
   update,
   button,
   el,
@@ -899,7 +1013,9 @@ $("openBulk").onclick = () => {
 renderPrices();
 render();
 function openRecordLink() {
-  if (location.hash === "#record") records.open();
+  if (location.hash !== "#record") return;
+  setInteraction("check");
+  records.open();
 }
 window.addEventListener("hashchange", openRecordLink);
 openRecordLink();

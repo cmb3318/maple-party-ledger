@@ -14,6 +14,7 @@ const time = new Intl.DateTimeFormat("ko-KR", {
 
 export function setupRecords({
   getState,
+  canRecord,
   update,
   button,
   el,
@@ -30,7 +31,7 @@ export function setupRecords({
   let writing = false;
 
   async function commit(entries, message, remember = "") {
-    if (writing) return;
+    if (writing || !canRecord()) return;
     writing = true;
     const changed = [];
     try {
@@ -54,33 +55,41 @@ export function setupRecords({
     return changed;
   }
   function announce(message, undo) {
+    if (!canRecord()) return;
     const inQuick = $("quickDialog").open;
     $("quickNotice").textContent = inQuick ? message : "";
     $("quickUndo").hidden = !inQuick || !undo;
     $("recordToast").hidden = inQuick;
     $("recordMessage").textContent = message;
     $("undoRecord").hidden = !undo;
+    if (!inQuick && undo && document.activeElement === document.body)
+      $("undoRecord").focus({ preventScroll: true });
   }
   async function undo() {
-    if (writing || !receipts.length) return;
+    if (writing || !canRecord() || !receipts.length) return;
+    writing = true;
     const pending = receipts;
     receipts = [];
     let count = 0;
-    await update((state) => {
-      for (const update of pending) {
-        if (undoClear(state, update)) {
-          recentlyChecked.delete(update.name + "-" + update.bossId);
-          count += 1;
+    try {
+      await update((state) => {
+        for (const receipt of pending) {
+          if (undoClear(state, receipt)) {
+            recentlyChecked.delete(receipt.name + "-" + receipt.bossId);
+            count += 1;
+          }
         }
-      }
-    });
+      });
+    } finally {
+      writing = false;
+    }
     announce(
       count ? "격파 기록을 되돌렸어요." : "이미 변경되어 되돌릴 기록이 없어요.",
       false,
     );
   }
   function toggle(raid, done, periodKey = period(raid.boss.cycle).key) {
-    if (writing) return;
+    if (writing || !canRecord()) return;
     const key = raidKey(raid);
     if (done && $("quickDialog").open && mode === "open")
       recentlyChecked.add(key);
@@ -104,15 +113,32 @@ export function setupRecords({
       if (changed) signalRaid(key);
     });
   }
+  function complete(raids, now) {
+    if (writing || !canRecord()) return;
+    const pending = raids.filter((raid) => !raid.done);
+    if (!pending.length) return;
+    if ($("quickDialog").open && mode === "open") {
+      for (const raid of pending) recentlyChecked.add(raidKey(raid));
+    }
+    return commit(
+      pending.map((raid) => ({
+        name: raid.character.name,
+        bossId: raid.boss.id,
+        periodKey: period(raid.boss.cycle, now).key,
+        done: true,
+      })),
+      (count) => "보스 " + count + "개 격파 완료",
+    );
+  }
 
-  function makeQuickRow(raid) {
+  function makeQuickRow(raid, now) {
     const label = raid.character.name + " " + raid.boss.name;
     const row = button(
       "",
       () => toggle(raid, !raid.done, displayPeriod),
       "record-row",
     );
-    const displayPeriod = period(raid.boss.cycle).key;
+    const displayPeriod = period(raid.boss.cycle, now).key;
     row.dataset.quickKey = raidKey(raid);
     row.setAttribute(
       "aria-label",
@@ -153,7 +179,7 @@ export function setupRecords({
     );
     return row;
   }
-  function render(raids) {
+  function render(raids, now = Date.now()) {
     const remaining = raids.filter((raid) => !raid.done).length;
     $("mobileRemaining").textContent = raids.length
       ? "남은 보스 " + remaining + "개"
@@ -197,7 +223,15 @@ export function setupRecords({
           : "아직 격파한 보스가 없어요.";
       list.append(el("p", detail, "quick-empty"));
     }
-    for (const raid of rows) list.append(makeQuickRow(raid));
+    const completeShown = $("quickComplete");
+    const pending = rows.filter((raid) => !raid.done);
+    completeShown.hidden = mode === "done";
+    completeShown.disabled = !pending.length;
+    completeShown.textContent = pending.length
+      ? "표시된 " + pending.length + "개 완료"
+      : "표시된 보스 완료";
+    completeShown.onclick = () => complete(pending, now);
+    for (const raid of rows) list.append(makeQuickRow(raid, now));
     if (focus) {
       const focused = list.querySelector(
         '[data-quick-key="' + CSS.escape(focus) + '"]',
@@ -212,7 +246,7 @@ export function setupRecords({
     return plannedRaids(getState());
   }
   function open() {
-    if ($("quickDialog").open) return;
+    if (!canRecord() || $("quickDialog").open) return;
     mode = "open";
     const raids = snapshot();
     const active = getState().active;
@@ -364,5 +398,5 @@ export function setupRecords({
       (count) => "넥슨 스케줄러 격파 " + count + "건을 반영했어요.",
     );
   };
-  return { open, render, toggle };
+  return { complete, open, render, toggle };
 }

@@ -1,11 +1,25 @@
+@font-face {
+  font-family: MapleStory;
+  src: url("/fonts/Maplestory Light.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: MapleStory;
+  src: url("/fonts/Maplestory Bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
 :root {
   color-scheme: dark;
-  font:
-    16px/1.5 Inter,
-    "Malgun Gothic",
-    "Apple SD Gothic Neo",
-    system-ui,
-    sans-serif;
+  --font-ui: "Malgun Gothic", "맑은 고딕", MapleStory;
+  --font-title: MapleStory, "Malgun Gothic", "맑은 고딕";
+  --font-detail: Dotum, "돋움", MapleStory, "Malgun Gothic", "맑은 고딕";
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.5;
   --bg: #101119;
   --panel: #191b27;
   --panel-2: #1d2030;
@@ -121,7 +135,9 @@ p {
 }
 h1,
 h2,
-h3 {
+h3,
+.brand {
+  font-family: var(--font-title);
   letter-spacing: -0.038em;
   overflow-wrap: anywhere;
 }
@@ -479,22 +495,10 @@ dialog,
   color: #c0bed5;
   font-size: 0.75rem;
 }
-.with-icon {
-  display: flex;
-  align-items: center;
-  gap: 0.38rem;
-}
-.with-icon h3 {
-  color: var(--ink);
-}
 .emblem {
   width: 1.7rem;
   height: 1.7rem;
   flex: none;
-}
-.with-icon .emblem {
-  width: 1.15rem;
-  height: 1.15rem;
 }
 .raid-row {
   position: relative;
@@ -519,9 +523,6 @@ dialog,
     color-mix(in srgb, var(--party) 9%, #191b27) 65%,
     #191b27
   );
-  box-shadow: inset 2px 0 color-mix(in srgb, var(--party) 75%, white);
-}
-.raid-row.party-colored.cleared {
   box-shadow: inset 2px 0 color-mix(in srgb, var(--party) 75%, white);
 }
 .raid-row:focus-within {
@@ -614,23 +615,6 @@ dialog select:hover {
   }
   to {
     transform: scaleX(1);
-  }
-}
-@container (min-width: 620px) {
-  .raid-row {
-    grid-template-columns:
-      1rem minmax(0, 1fr) minmax(14rem, 1.25fr)
-      max-content auto;
-  }
-  .raid-controls {
-    grid-column: 3;
-    grid-row: 1;
-  }
-  .value {
-    grid-column: 4;
-  }
-  .quick-note {
-    grid-column: 5;
   }
 }
 .empty,
@@ -1176,26 +1160,6 @@ tbody tr:nth-child(even) {
 #weekProgress::-moz-progress-bar {
   background: var(--mint);
 }
-.raid-check {
-  grid-column: 1 / 3;
-  grid-row: 1;
-  min-height: 1.54rem;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.32rem;
-  padding: 0.13rem 0.13rem 0.13rem 0;
-}
-.raid-check:hover {
-  background: color-mix(in srgb, var(--mint) 11%, transparent);
-}
-.raid-check input {
-  flex: none;
-}
-.cleared .raid-check b {
-  color: #bde8db;
-}
-
 .mobile-dock {
   display: none;
 }
@@ -1339,13 +1303,16 @@ button.record-row[aria-pressed="true"] {
 .quick-footer {
   display: grid;
   align-items: center;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  grid-template-areas: "progress undo sync" "notice notice notice";
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-areas: "progress complete undo sync" "notice notice notice notice";
   gap: 0.2rem 0.4rem;
 }
 #quickProgress {
   grid-area: progress;
   font-variant-numeric: tabular-nums;
+}
+#quickComplete {
+  grid-area: complete;
 }
 #quickNotice {
   grid-area: notice;
@@ -1426,7 +1393,7 @@ button.record-row[aria-pressed="true"] {
   .mobile-dock button {
     min-height: 2.45rem;
   }
-  body {
+  body[data-interaction="check"] {
     padding-bottom: calc(3.4rem + env(safe-area-inset-bottom));
   }
   .record-toast {
@@ -1453,5 +1420,192 @@ button.record-row[aria-pressed="true"] {
 @media (prefers-reduced-motion: reduce) {
   #weekProgress::-webkit-progress-value {
     transition-duration: 0s;
+  }
+}
+
+.board-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.18rem;
+}
+#interactionModes {
+  display: flex;
+  gap: 0.18rem;
+}
+#interactionModes button {
+  background: var(--well);
+  color: var(--muted);
+}
+#interactionModes button:hover {
+  color: var(--ink);
+}
+#interactionModes button[aria-pressed="true"] {
+  --mode-color: var(--mint);
+  color: var(--mode-color);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--mode-color) 24%, var(--well)),
+    var(--well)
+  );
+  box-shadow: inset 0 -2px
+    color-mix(in srgb, var(--mode-color) 72%, transparent);
+}
+#interactionModes button[data-interaction="settings"] {
+  --mode-color: var(--violet);
+}
+#completeShown,
+#quickComplete,
+.scope-complete {
+  color: #b9f0d9;
+  background: #253d3a;
+}
+#completeShown:hover:not(:disabled),
+#quickComplete:hover:not(:disabled),
+.scope-complete:hover {
+  background: #35564d;
+}
+.squad-character + .squad-character {
+  margin-top: 0.38rem;
+}
+.squad-character-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.24rem 0.5rem;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--party, var(--accent)) 20%, var(--panel-2)),
+    var(--panel-2) 78%
+  );
+}
+.squad-character-head .portrait,
+.check-identity .portrait {
+  width: 1.6rem;
+  height: 1.6rem;
+  background: transparent;
+}
+.squad-character-head .portrait.fallback,
+.check-identity .portrait.fallback {
+  padding: 0.17rem;
+}
+.squad-progress {
+  margin-left: auto;
+  color: var(--team-ink, var(--muted));
+  white-space: nowrap;
+}
+.setup-row {
+  grid-template-columns: minmax(0, 1fr) max-content auto;
+}
+.setup-row .raid-identity,
+.check-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.34rem;
+  min-width: 0;
+}
+.setup-row .raid-identity .emblem,
+.check-identity .emblem {
+  width: 1.13rem;
+  height: 1.13rem;
+}
+.setup-row .value {
+  grid-column: -3;
+}
+.setup-row .quick-note {
+  grid-column: -2;
+}
+.setup-row .raid-note {
+  grid-column: 1 / -1;
+}
+@container (max-width: 619px) {
+  .setup-row .raid-controls {
+    grid-column: 1 / -1;
+  }
+}
+.check-row {
+  width: 100%;
+  min-height: 2.55rem;
+  grid-template-columns: 1.02rem minmax(0, 1fr) auto;
+  column-gap: 0.38rem;
+  text-align: left;
+  white-space: normal;
+}
+.check-row:hover {
+  background: color-mix(in srgb, var(--party, var(--mint)) 26%, var(--panel));
+}
+.check-row:focus-visible {
+  outline-offset: -2px;
+}
+.check-mark {
+  grid-row: 1;
+  display: grid;
+  place-items: center;
+  width: 0.9rem;
+  height: 0.9rem;
+  font-family: var(--font-title);
+  font-size: 0.68rem;
+  color: #173129;
+  background: color-mix(in srgb, var(--party, var(--muted)) 20%, var(--well));
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--party, var(--muted)) 70%, transparent);
+}
+.check-row.cleared .check-mark {
+  background: var(--mint);
+  box-shadow: none;
+}
+.check-identity b {
+  overflow-wrap: anywhere;
+  font-size: 0.84rem;
+}
+.check-details {
+  grid-column: 2 / -1;
+  display: flex;
+  gap: 0.12rem 0.48rem;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-weight: 400;
+}
+.raid-party {
+  color: var(--team-ink, var(--ink));
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.check-row .raid-note {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-weight: 400;
+}
+.check-row .value {
+  grid-column: -2;
+}
+.check-details,
+.raid-row .raid-note,
+.raid-row .value,
+.squad-progress {
+  font-family: var(--font-detail);
+  font-size: 9pt;
+}
+@container (min-width: 620px) {
+  .setup-row {
+    grid-template-columns: minmax(0, 1fr) minmax(14rem, 1.25fr) max-content auto;
+  }
+  .setup-row .raid-controls {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .check-row {
+    grid-template-columns: 1.02rem minmax(9rem, 1fr) minmax(0, 1fr) auto;
+  }
+  .check-details {
+    grid-column: 3;
+  }
+}
+@media (max-width: 400px) {
+  .quick-footer {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "progress complete" "undo sync" "notice notice";
   }
 }

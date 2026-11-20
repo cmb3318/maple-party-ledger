@@ -21,14 +21,16 @@
         >
         <div class="mast-actions">
           <span id="week" class="muted week-label"></span>
-          <button id="openQuick" class="record-button">✓ 격파 기록</button>
+          <button id="openQuick" class="record-button" data-check-only>
+            ✓ 격파 기록
+          </button>
         </div>
       </div>
     </header>
     <main class="shell">
       <div class="heading">
         <h1>보스 파티</h1>
-        <div class="tools">
+        <div class="tools" data-settings-only hidden>
           <button id="addSquad">+ 파티 추가</button>
           <button id="addCharacter" class="primary">+ 캐릭터 추가</button>
         </div>
@@ -63,11 +65,29 @@
           <button data-mode="bosses" aria-pressed="false">보스별 보기</button>
         </nav>
         <div class="tools">
-          <button id="openBulk" class="primary">보스 일괄 편집</button
+          <button id="openBulk" class="primary" data-settings-only hidden>
+            보스 일괄 편집</button
           ><button id="showPrices">결정석 가격표</button>
         </div>
       </div>
       <section class="finder" aria-label="보스 목록 필터">
+        <div class="board-actions">
+          <div id="interactionModes" aria-label="작업 모드">
+            <button type="button" data-interaction="check" aria-pressed="true">
+              ✓ 체크 모드
+            </button>
+            <button
+              type="button"
+              data-interaction="settings"
+              aria-pressed="false"
+            >
+              설정 모드
+            </button>
+          </div>
+          <button type="button" id="completeShown" data-check-only disabled>
+            표시된 보스 완료
+          </button>
+        </div>
         <div class="finder-controls">
           <input
             type="search"
@@ -76,7 +96,7 @@
             aria-label="캐릭터, 보스, 파티 검색"
             autocomplete="off"
           />
-          <label class="hide-done"
+          <label class="hide-done" data-check-only
             ><input type="checkbox" id="hideDone" />격파 숨기기</label
           >
           <button type="button" id="foldCards" aria-pressed="false">
@@ -96,6 +116,9 @@
       <footer>
         <span>목요일 00:00 주간 초기화 · 매월 1일 00:00 월간 초기화 (KST)</span>
         <span>Data based on NEXON Open API</span>
+        <a href="https://maplestory.nexon.com/Media/Font"
+          >메이플스토리체 © ㈜넥슨코리아</a
+        >
       </footer>
     </main>
     <div id="recordToast" class="record-toast" hidden>
@@ -105,7 +128,7 @@
         ×
       </button>
     </div>
-    <div class="mobile-dock">
+    <div class="mobile-dock" data-check-only>
       <span id="mobileRemaining"></span>
       <button id="mobileQuick" class="record-button">✓ 격파 기록</button>
     </div>
@@ -128,6 +151,9 @@
       <div id="quickList" class="quick-list"></div>
       <div class="quick-footer">
         <span id="quickProgress" class="muted"></span>
+        <button id="quickComplete" type="button" disabled>
+          표시된 보스 완료
+        </button>
         <span id="quickNotice" role="status"></span>
         <button id="quickUndo" type="button" hidden>되돌리기</button>
         <button id="quickSync" type="button">
