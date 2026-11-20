@@ -2,105 +2,181 @@
 <html lang="ko">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#f7f6f1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#11121a" />
     <meta
       name="description"
-      content="캐릭터별 메이플스토리 보스 파티와 격파 기록을 관리하는 주간 원정 수첩"
+      content="메이플스토리 캐릭터별 보스 파티 배정과 결정석 수입 관리"
     />
-    <title>단풍수첩 · 메이플 보스 파티 체크리스트</title>
-    <link rel="icon" type="image/png" href="/leaf.png" />
+    <title>단풍수첩 · 보스 파티와 결정석</title>
+    <link rel="icon" href="/leaf.png" />
     <link rel="stylesheet" href="/style.css" />
     <script type="module" src="/app.js"></script>
   </head>
   <body>
-    <header>
+    <header class="top">
       <div class="shell mast">
         <a class="brand" href="/"
-          ><img src="/leaf.png" width="30" height="30" alt="" />단풍수첩</a
-        ><span>메이플스토리 보스 기록</span>
+          ><img src="/leaf.png" alt="" width="28" height="28" />단풍수첩</a
+        >
+        <span id="week" class="muted"></span>
       </div>
     </header>
     <main class="shell">
-      <section class="hero">
-        <div>
-          <span class="eyebrow">PARTY JOURNAL</span>
-          <h1>보스 원정 수첩</h1>
-          <p>캐릭터별 파티와 격파 기록을 한곳에.</p>
-          <div class="date" id="week"></div>
-        </div>
-        <img src="/summit.png" alt="" class="scene" />
-      </section>
-      <div class="columns">
-        <aside class="card">
-          <div class="card-head">
-            <h2>내 캐릭터</h2>
-            <span id="charCount" class="count">0</span>
-          </div>
-          <div id="roster"></div>
-          <form id="add">
-            <label for="nickname">캐릭터 이름</label
-            ><input
-              id="nickname"
-              maxlength="12"
-              placeholder="닉네임 입력"
-              autocomplete="off"
-              required
-            /><button id="lookup" class="primary">조회하고 추가</button
-            ><button id="manual" type="button" class="quiet">
-              이름으로 직접 추가
-            </button>
-          </form>
-          <p id="lookupMsg" role="status"></p>
-        </aside>
-        <section class="card journal">
-          <div class="card-head">
-            <div>
-              <span class="eyebrow">RAID CHECKLIST</span>
-              <h2>보스 체크리스트</h2>
-            </div>
-            <button id="edit" class="secondary">목록 편집</button>
-          </div>
-          <div class="tabs" id="cycles" aria-label="기록 주기">
-            <button data-cycle="weekly" aria-pressed="true">주간 보스</button
-            ><button data-cycle="monthly" aria-pressed="false">
-              월간 보스
-            </button>
-          </div>
-          <div class="summary">
-            <div>
-              <strong id="progressText"></strong><span id="reset"></span>
-            </div>
-            <progress
-              id="progress"
-              aria-label="격파 진행률"
-              max="1"
-              value="0"
-            ></progress>
-          </div>
-          <p id="hint"></p>
-          <div id="bosses"></div>
-        </section>
+      <div class="heading">
+        <h1>보스 파티</h1>
+        <button id="addCharacter" class="primary">+ 캐릭터 추가</button>
       </div>
-      <p id="warning" role="alert" hidden></p>
+      <section class="earnings" aria-label="결정석 수입" aria-live="polite">
+        <div>
+          <span>주간 예상</span><strong id="weeklyTotal"></strong
+          ><small id="weeklyCount"></small>
+        </div>
+        <div>
+          <span>주간 격파</span><strong id="weeklyDone"></strong
+          ><small id="weeklyCleared"></small>
+        </div>
+        <div>
+          <span>월간 예상</span><strong id="monthlyTotal"></strong
+          ><small id="monthlyCleared"></small>
+        </div>
+      </section>
+      <p class="notice" id="cap" hidden></p>
+      <div class="toolbar">
+        <nav id="modes" aria-label="보기 방식">
+          <button data-mode="characters" aria-pressed="true">
+            캐릭터별 보기
+          </button>
+          <button data-mode="squads" aria-pressed="false">파티별 보기</button>
+          <button data-mode="bosses" aria-pressed="false">보스별 보기</button>
+        </nav>
+        <div class="tools">
+          <button id="addSquad">+ 파티 추가</button
+          ><button id="showPrices">결정석 가격표</button>
+        </div>
+      </div>
+      <div id="board"></div>
+      <p class="notice" id="warning" role="alert" hidden></p>
       <footer>
-        <b>단풍수첩</b
-        ><span>이 브라우저에 자동 저장 · Data based on NEXON Open API</span>
+        목요일 00:00 주간 초기화 · 매월 1일 00:00 월간 초기화 (KST) · 브라우저에
+        저장 <span>Data based on NEXON Open API</span>
       </footer>
     </main>
-    <dialog id="editor">
-      <form method="dialog">
-        <h2>원정 목록 편집</h2>
-        <p>이 캐릭터로 갈 보스를 선택하세요.</p>
-        <div id="choices"></div>
+    <dialog id="characterDialog" aria-labelledby="characterTitle">
+      <form id="add">
+        <h2 id="characterTitle">캐릭터 추가</h2>
+        <label
+          >캐릭터 이름<input
+            id="nickname"
+            maxlength="12"
+            placeholder="닉네임 입력"
+            autocomplete="off"
+            required
+        /></label>
+        <p id="lookupMsg" role="status" class="muted"></p>
         <div class="actions">
-          <button value="cancel" class="secondary">취소</button
-          ><button value="save" class="primary">목록 저장</button>
+          <button type="button" data-close>닫기</button>
+          <button id="manual" type="button">이름으로 직접 추가</button>
+          <button id="lookup" class="primary">조회하고 추가</button>
         </div>
       </form>
     </dialog>
+    <dialog id="targetsDialog" aria-labelledby="targetsTitle">
+      <form id="targetsForm">
+        <h2 id="targetsTitle">보스 선택</h2>
+        <div id="choices"></div>
+        <div class="actions">
+          <button type="button" data-close>취소</button
+          ><button class="primary">보스 저장</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="raidDialog" aria-labelledby="raidTitle">
+      <form id="raidForm">
+        <h2 id="raidTitle">보스 설정</h2>
+        <div class="pair">
+          <label>난이도<select id="level"></select></label>
+          <label>참가 인원<select id="players"></select></label>
+        </div>
+        <label>같이 가는 파티<select id="squadSelect"></select></label>
+        <label id="newSquadField" hidden
+          >새 파티 이름<input
+            id="newSquadName"
+            maxlength="32"
+            placeholder="예: 토요일 밤 파티"
+        /></label>
+        <label
+          >메모<input id="raidNote" maxlength="100" placeholder="요일, 시간 등"
+        /></label>
+        <p class="raid-preview" id="raidPreview"></p>
+        <div class="actions">
+          <button type="button" data-close>취소</button
+          ><button class="primary">배정 저장</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="squadDialog" aria-labelledby="squadTitle">
+      <form id="squadForm">
+        <h2 id="squadTitle">파티 추가</h2>
+        <div class="pair">
+          <label
+            >파티 이름<input
+              id="squadName"
+              maxlength="32"
+              required
+              placeholder="예: 토요일 밤 파티"
+          /></label>
+          <label>기본 인원<select id="squadSize"></select></label>
+        </div>
+        <label
+          >파티원·시간 메모<input
+            id="squadNote"
+            maxlength="100"
+            placeholder="예: 비숍님, 토요일 21시"
+        /></label>
+        <div class="actions">
+          <button type="button" id="removeSquad" class="danger" hidden>
+            파티 삭제
+          </button>
+          <button type="button" data-close>취소</button
+          ><button class="primary">파티 저장</button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="pricesDialog" class="wide" aria-labelledby="pricesTitle">
+      <div class="dialog-head">
+        <h2 id="pricesTitle">결정석 가격표</h2>
+        <button type="button" data-close>닫기</button>
+      </div>
+      <p class="muted" id="priceExplanation"></p>
+      <div
+        class="table-scroll"
+        tabindex="0"
+        aria-label="인원별 결정석 가격표 스크롤"
+      >
+        <table id="priceTable"></table>
+      </div>
+      <p class="sources">
+        <a
+          href="https://maplestory.nexon.com/News/Update/813"
+          target="_blank"
+          rel="noopener"
+          >9월 가격 공지</a
+        ><a
+          href="https://maplestory.nexon.com/News/Update/815"
+          target="_blank"
+          rel="noopener"
+          >10월 가격 공지</a
+        ><a
+          href="https://maplescanner.com/boss/crystal"
+          target="_blank"
+          rel="noopener"
+          >가격 대조표</a
+        >
+      </p>
+    </dialog>
     <noscript
-      >체크리스트를 사용하려면 브라우저에서 자바스크립트를 켜 주세요.</noscript
+      >단풍수첩을 사용하려면 브라우저에서 자바스크립트를 켜 주세요.</noscript
     >
   </body>
 </html>

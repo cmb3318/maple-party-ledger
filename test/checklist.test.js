@@ -7,7 +7,10 @@ import {
   isCleared,
   readState,
   safeImage,
+  plannedRaids,
+  totals,
 } from "../public/model.js";
+import { minimumPrice, maxPlayers, share } from "../public/crystals.js";
 import { onRequest } from "../functions/api/character.js";
 const at = (value) => Date.parse(value);
 test("weekly rollover is Thursday midnight in Seoul, across a year boundary", () => {
@@ -21,6 +24,7 @@ test("monthly rollover is independent of weekly clears and preserves recurring p
     b = newParty("파티원");
   const weekly = bosses[0],
     monthly = bosses.find((x) => x.id === "blackmage");
+  a.targets.push(weekly.id, monthly.id);
   const now = at("2026-11-18T14:59:59.999Z");
   for (const boss of [weekly, monthly])
     a.clears[boss.id] = period(boss.cycle, now).key;
@@ -41,6 +45,49 @@ test("saved profiles expire independently of local party notes", () => {
   assert.equal(loaded.parties[0].profile, null);
   assert.equal(loaded.parties[0].settings.lotus.note, "금 21시");
   assert.throws(() => readState("{"));
+});
+test("saved legacy records stay readable and only qualifying bosses enter the plan", () => {
+  const character = newParty("단풍이");
+  character.targets = ["lotus", "papulatus", "blackmage"];
+  character.settings.papulatus = { note: "기존 기록" };
+  const state = readState(
+    JSON.stringify({
+      version: 1,
+      active: character.name,
+      parties: [character],
+    }),
+  );
+  assert.deepEqual(state.squads, []);
+  assert.equal(state.parties[0].settings.papulatus.note, "기존 기록");
+  assert.deepEqual(
+    plannedRaids(state).map((raid) => raid.boss.id),
+    ["lotus", "blackmage"],
+  );
+  assert.ok(
+    bosses.every((boss) =>
+      boss.levels.every((level) => share(boss, level, 1) >= minimumPrice),
+    ),
+  );
+});
+test("planned shares respect the difficulty's entry cap and separate monthly and completed income", () => {
+  const now = at("2026-11-20T00:00:00Z");
+  const character = newParty("단풍이");
+  character.targets = ["lotus", "damien", "blackmage"];
+  character.settings = {
+    lotus: { level: "익스트림", squadId: "team", size: 6 },
+    damien: { level: "노멀", size: 3 },
+    blackmage: { level: "하드", size: 3 },
+  };
+  character.clears.lotus = period("weekly", now).key;
+  const squad = { id: "team", name: "금요일 파티", size: 6 };
+  const raids = plannedRaids({ parties: [character], squads: [squad] }, now);
+  assert.equal(maxPlayers(bosses[0], "익스트림"), 2);
+  assert.equal(raids[0].squad, squad);
+  assert.equal(raids[0].size, 2);
+  assert.deepEqual(totals(raids), {
+    weekly: { planned: 275_416_666, done: 272_500_000, count: 2, cleared: 1 },
+    monthly: { planned: 155_000_000, done: 0, count: 1, cleared: 0 },
+  });
 });
 const name = "단풍이";
 function req(key = "", customName = name, method = "GET") {
