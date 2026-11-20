@@ -12,6 +12,12 @@ import {
   validName,
 } from "./model.js";
 import { maxPlayers, share, priceDate, minimumPrice } from "./crystals.js";
+import {
+  palette,
+  paintParty,
+  partyColor,
+  nextPartyColor,
+} from "./party-colors.js";
 const $ = (id) => document.getElementById(id);
 function el(tag, text = "", cls = "") {
   const node = document.createElement(tag);
@@ -38,6 +44,8 @@ function load() {
 let state = load();
 let mode = "characters";
 let busy = false;
+const folded = new Set();
+let partyFilter = "";
 
 let lastPeriod = "";
 const dateFormat = new Intl.DateTimeFormat("ko-KR", {
@@ -177,41 +185,136 @@ function bossIcon(boss) {
   return image;
 }
 function raidRow(raid, grouping) {
-  const { boss, character, level, size, value, done, note } = raid;
+  const { boss, character, level, size, value, done, note, squad } = raid;
   const line = el("div", "", "raid-row" + (done ? " cleared" : ""));
+  paintParty(line, squad);
+  const key = character.name + "-" + boss.id;
+  line.dataset.raid = key;
   const check = el("input");
   check.type = "checkbox";
   check.checked = done;
   check.setAttribute("aria-label", character.name + " " + boss.name + " 격파");
-  check.dataset.focus = "check-" + character.name + "-" + boss.id;
+  check.dataset.focus = "check-" + key;
   const displayed = period(boss.cycle).key;
-  check.onchange = () =>
-    editParty(character.name, (fresh) => {
+  check.onchange = async () => {
+    const checked = check.checked;
+    await editParty(character.name, (fresh) => {
       if (
         !fresh.targets.includes(boss.id) ||
         displayed !== period(boss.cycle).key
       )
         return;
-      if (check.checked) fresh.clears[boss.id] = displayed;
+      if (checked) fresh.clears[boss.id] = displayed;
       else delete fresh.clears[boss.id];
     });
+    signalRaid(key);
+  };
   const identity = el("div", "", "raid-identity");
   const title = grouping === "characters" ? boss.name : character.name;
-  identity.append(
-    el("b", title),
-    el("span", level + " · " + size + "인", "muted"),
+  const name = el("b", title);
+  name.title = title;
+  identity.append(name);
+  const controls = el("div", "", "raid-controls");
+  function select(field, label, choices, selected, change) {
+    const control = el("select", "", "quick-" + field);
+    control.setAttribute(
+      "aria-label",
+      character.name + " " + boss.name + " " + label,
+    );
+    control.dataset.focus = field + "-" + key;
+    addOptions(control, choices);
+    control.value = selected;
+    control.onchange = async () => {
+      const value = control.value;
+      await update((freshState) => {
+        const fresh = freshState.parties.find(
+          (item) => item.name === character.name,
+        );
+        if (!fresh?.targets.includes(boss.id)) return;
+        const current = raidFor(fresh, boss, freshState.squads);
+        const patch = change(value, current, freshState.squads);
+        fresh.settings[boss.id] = { ...fresh.settings[boss.id], ...patch };
+      });
+      signalRaid(key);
+    };
+    return control;
+  }
+  controls.append(
+    select(
+      "level",
+      "난이도",
+      boss.levels.map((item) => [item, item]),
+      level,
+      (level, current) => ({
+        level,
+        size: Math.min(current.size, maxPlayers(boss, level)),
+      }),
+    ),
+    select(
+      "party",
+      "파티",
+      [
+        [size === 1 && !squad ? "솔로" : "파티 미지정", ""],
+        ...state.squads.map((item) => [item.name, item.id]),
+      ],
+      squad?.id || "",
+      (id, current, squads) => {
+        const picked = squads.find((item) => item.id === id);
+        return {
+          squadId: picked?.id || "",
+          size: Math.min(picked?.size ?? 1, maxPlayers(boss, current.level)),
+        };
+      },
+    ),
+    select(
+      "size",
+      "인원",
+      sizeOptions(maxPlayers(boss, level)),
+      String(size),
+      (size) => ({ size: Number(size) }),
+    ),
   );
-  if (note) identity.append(el("small", note, "raid-note"));
-  const tag = el(
-    "span",
-    partyName(raid),
-    "party-tag" + (raid.squad ? " assigned" : ""),
+  const edit = button(
+    note ? "메모 ●" : "메모",
+    () => openRaid(raid),
+    "quick-note",
   );
-  const edit = button("설정", () => openRaid(raid));
-  edit.setAttribute("aria-label", character.name + " " + boss.name + " 설정");
-  edit.dataset.focus = "raid-" + character.name + "-" + boss.id;
-  line.append(check, identity, tag, el("span", meso(value), "value"), edit);
+  edit.setAttribute(
+    "aria-label",
+    character.name + " " + boss.name + " 메모 및 상세 설정",
+  );
+  if (note) edit.title = note;
+  edit.dataset.focus = "raid-" + key;
+  line.append(
+    check,
+    identity,
+    controls,
+    el("span", meso(value), "value"),
+    edit,
+  );
+  if (note) line.append(el("small", note, "raid-note"));
   return line;
+}
+function signalRaid(key) {
+  document
+    .querySelector('[data-raid="' + CSS.escape(key) + '"]')
+    ?.classList.add("signal");
+}
+function collapseControl(card, key, name) {
+  card.dataset.cardKey = key;
+  const isFolded = folded.has(key);
+  const toggle = button(
+    isFolded ? "+" : "−",
+    () => {
+      if (!folded.delete(key)) folded.add(key);
+      render();
+    },
+    "fold",
+  );
+  toggle.setAttribute("aria-label", name + (isFolded ? " 펼치기" : " 접기"));
+  toggle.setAttribute("aria-expanded", !isFolded);
+  toggle.dataset.focus = "fold-" + key;
+  return toggle;
 }
 function miniTotal(raids) {
   const { weekly, monthly } = totals(raids);
@@ -222,6 +325,7 @@ function miniTotal(raids) {
 }
 function characterCard(character, raids) {
   const card = el("article", "", "card character");
+  const key = "character-" + character.name;
   const banner = el("div", "", "character-head");
   const name = el("div");
   const meta = character.profile;
@@ -261,8 +365,10 @@ function characterCard(character, raids) {
   );
   more.append(menu, menuBody);
   controls.append(more);
+  controls.append(collapseControl(card, key, character.name));
   banner.append(portrait(character), name, controls);
   card.append(banner, miniTotal(raids));
+  if (folded.has(key)) return card;
   if (!raids.length)
     card.append(el("p", "보스 편집에서 갈 보스를 골라 주세요.", "empty"));
   for (const cycle of ["weekly", "monthly"]) {
@@ -289,16 +395,21 @@ function groupHeader(title, subtitle = "") {
   return heading;
 }
 function bossGroup(boss, raids) {
-  const group = el("article", "", "card group");
+  const group = el("article", "", "card group boss-card");
+  const key = "boss-" + boss.id;
   const header = groupHeader(boss.name, cycleName(boss.cycle));
   header.prepend(bossIcon(boss));
   header.append(miniTotal(raids));
+  header.append(collapseControl(group, key, boss.name));
   group.append(header);
+  if (folded.has(key)) return group;
   raids.forEach((raid) => group.append(raidRow(raid, "bosses")));
   return group;
 }
 function squadGroup(squad, label, raids) {
   const group = el("article", "", "card group");
+  const key = "squad-" + (squad?.id || label);
+  paintParty(group, squad);
   const bossesInSquad = bosses.filter((boss) =>
     raids.some((raid) => raid.boss === boss),
   );
@@ -311,10 +422,14 @@ function squadGroup(squad, label, raids) {
     const edit = button("파티 편집", () => openSquad(squad));
     edit.setAttribute("aria-label", squad.name + " 편집");
     controls.append(edit);
+    controls.append(collapseControl(group, key, label));
     header.append(controls);
+  } else {
+    header.append(collapseControl(group, key, label));
   }
   group.append(header, miniTotal(raids));
   if (squad?.note) group.append(el("p", squad.note, "group-note"));
+  if (folded.has(key)) return group;
   if (squad && !raids.length)
     group.append(el("p", "보스 일괄 편집에서 이 파티를 배정하세요.", "empty"));
   for (const boss of bossesInSquad) {
@@ -358,54 +473,93 @@ function render() {
   const notices = [];
   if (over.length)
     notices.push(
-      over.map((c) => c.name).join(", ") +
-        " · 한 캐릭터는 주간 12종까지 격파할 수 있어요.",
+      "주간 격파 한도(12종)를 넘긴 캐릭터 " + over.length + "명.",
     );
   if (weekly.count + monthly.count > 90)
     notices.push("일반 월드는 메이플ID당 주간 90개까지 판매할 수 있어요.");
   $("cap").hidden = !notices.length;
   $("cap").textContent = notices.length
-    ? "예상 금액은 선택 목록 합계예요. " + notices.join(" ")
+    ? notices.join(" ") + " 예상 수입은 선택한 보스 합계예요."
     : "";
   for (const control of $("modes").children)
     control.setAttribute("aria-pressed", control.dataset.mode === mode);
+  document.querySelector("main").dataset.mode = mode;
+  if (partyFilter && !state.squads.some((squad) => squad.id === partyFilter))
+    partyFilter = "";
+  paintFilters(raids);
+  const terms = $("boardSearch")
+    .value.trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  const hideDone = $("hideDone").checked;
+  const filtering = Boolean(terms.length || partyFilter || hideDone);
+  const visible = raids.filter((raid) => {
+    if (hideDone && raid.done) return false;
+    if (partyFilter && raid.squad?.id !== partyFilter) return false;
+    const text = [
+      raid.character.name,
+      raid.character.profile?.world,
+      raid.boss.name,
+      partyName(raid),
+      raid.note,
+      raid.level,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return terms.every((term) => text.includes(term));
+  });
+  $("boardCount").textContent =
+    (filtering ? visible.length + " / " : "") + raids.length + "개 배정";
   const board = $("board");
   board.className = mode === "characters" ? "character-grid" : "group-grid";
   board.replaceChildren();
   if (mode === "characters") {
-    state.parties.forEach((c) =>
-      board.append(
-        characterCard(
-          c,
-          raids.filter((raid) => raid.character === c),
-        ),
-      ),
-    );
+    for (const character of state.parties) {
+      const list = visible.filter((raid) => raid.character === character);
+      const matchingName =
+        !partyFilter &&
+        !hideDone &&
+        terms.length &&
+        terms.every((term) => character.name.toLowerCase().includes(term));
+      if (list.length || !filtering || matchingName)
+        board.append(characterCard(character, list));
+    }
   } else if (mode === "squads") {
-    state.squads.forEach((squad) =>
-      board.append(
-        squadGroup(
-          squad,
-          squad.name,
-          raids.filter((raid) => raid.squad === squad),
-        ),
-      ),
-    );
+    for (const squad of state.squads) {
+      const list = visible.filter((raid) => raid.squad === squad);
+      if (
+        list.length ||
+        !filtering ||
+        (!hideDone && !terms.length && partyFilter === squad.id)
+      )
+        board.append(squadGroup(squad, squad.name, list));
+    }
     for (const label of ["솔로", "파티 미지정"]) {
-      const list = raids.filter(
+      const list = visible.filter(
         (raid) => !raid.squad && partyName(raid) === label,
       );
       if (list.length) board.append(squadGroup(null, label, list));
     }
   } else {
     bosses.forEach((boss) => {
-      const list = raids.filter((raid) => raid.boss === boss);
+      const list = visible.filter((raid) => raid.boss === boss);
       if (list.length) board.append(bossGroup(boss, list));
     });
   }
   if (!board.children.length) {
     const box = el("div", "", "empty-state");
-    if (mode === "squads") {
+    if (filtering) {
+      box.append(
+        el("h2", "필터에 맞는 배정이 없어요."),
+        button("필터 초기화", () => {
+          partyFilter = "";
+          $("boardSearch").value = "";
+          $("hideDone").checked = false;
+          render();
+        }),
+      );
+    } else if (mode === "squads") {
       box.append(
         el("h2", "등록된 파티가 없어요"),
         button("+ 파티 추가", () => openSquad(), "primary"),
@@ -431,11 +585,49 @@ function render() {
     }
     board.append(box);
   }
+  const keys = visibleCardKeys();
+  const allFolded = keys.length && keys.every((key) => folded.has(key));
+  $("foldCards").disabled = !keys.length;
+  $("foldCards").setAttribute("aria-pressed", Boolean(allFolded));
+  $("foldCards").textContent = allFolded ? "모두 펼치기" : "모두 접기";
   lastPeriod = period("weekly").key + period("monthly").key;
   if (focus)
     document
       .querySelector('[data-focus="' + CSS.escape(focus) + '"]')
       ?.focus({ preventScroll: true });
+}
+function visibleCardKeys() {
+  return Array.from(
+    $("board").querySelectorAll("[data-card-key]"),
+    (card) => card.dataset.cardKey,
+  );
+}
+function paintFilters(raids) {
+  const filters = $("partyFilters");
+  filters.hidden = !state.squads.length;
+  filters.replaceChildren();
+  if (filters.hidden) return;
+  for (const [id, label, squad] of [
+    ["", "모든 파티", null],
+    ...state.squads.map((squad) => [squad.id, squad.name, squad]),
+  ]) {
+    const count = squad
+      ? raids.filter((raid) => raid.squad === squad).length
+      : null;
+    const chip = button(
+      label,
+      () => {
+        partyFilter = partyFilter === id ? "" : id;
+        render();
+      },
+      "party-filter",
+    );
+    if (count !== null) chip.append(el("small", String(count)));
+    paintParty(chip, squad);
+    chip.dataset.focus = "party-filter-" + id;
+    chip.setAttribute("aria-pressed", partyFilter === id);
+    filters.append(chip);
+  }
 }
 const newSquadOption = "@new";
 let raidTarget;
@@ -463,6 +655,10 @@ function syncRaid(override) {
   $("newSquadName").required = creating;
   $("raidPreview").textContent =
     "내 결정석 몫 · " + meso(share(boss, level, size));
+  paintParty(
+    $("raidDialog"),
+    state.squads.find((item) => item.id === $("squadSelect").value),
+  );
 }
 function openRaid(raid) {
   raidTarget = raid;
@@ -524,6 +720,7 @@ $("raidForm").onsubmit = async (event) => {
           name: newName,
           size: Math.max(2, size),
           note: "",
+          color: nextPartyColor(s.squads),
         };
         s.squads.push(squad);
       }
@@ -541,8 +738,35 @@ function openSquad(squad) {
   addOptions($("squadSize"), sizeOptions(6).slice(1));
   $("squadSize").value = String(squad?.size || 2);
   $("removeSquad").hidden = !squad;
+  $("squadColor").value = squad
+    ? partyColor(squad)
+    : nextPartyColor(state.squads);
+  updateColorPreview();
   $("squadDialog").showModal();
 }
+function updateColorPreview() {
+  const color = $("squadColor").value;
+  paintParty($("colorPreview"), { color });
+  paintParty($("squadDialog"), { color });
+  for (const chip of $("partyPalette").children)
+    chip.setAttribute("aria-pressed", chip.dataset.color === color);
+}
+for (const [label, color] of palette) {
+  const swatch = button(
+    "",
+    () => {
+      $("squadColor").value = color;
+      updateColorPreview();
+    },
+    "swatch",
+  );
+  swatch.dataset.color = color;
+  swatch.title = label;
+  swatch.setAttribute("aria-label", label);
+  paintParty(swatch, { color });
+  $("partyPalette").append(swatch);
+}
+$("squadColor").oninput = updateColorPreview;
 for (const id of ["squadName", "newSquadName"])
   $(id).oninput = () => $(id).setCustomValidity("");
 $("squadForm").onsubmit = async (event) => {
@@ -552,15 +776,17 @@ $("squadForm").onsubmit = async (event) => {
   if (!name) return;
   const size = Number($("squadSize").value);
   const note = $("squadNote").value.trim();
+  const color = $("squadColor").value;
   const id = squadId;
   let saved = false;
   await update((s) => {
     const duplicate = matchSquad(s, name);
     if (duplicate && duplicate.id !== id) return;
     const existing = s.squads.find((squad) => squad.id === id);
-    if (existing) Object.assign(existing, { name, size, note });
-    else if (!id) s.squads.push({ id: crypto.randomUUID(), name, size, note });
-    if (!$("bulkDialog").open) mode = "squads";
+    if (existing) Object.assign(existing, { name, size, note, color });
+    else if (!id)
+      s.squads.push({ id: crypto.randomUUID(), name, size, note, color });
+    if (!id && !$("bulkDialog").open) mode = "squads";
     saved = true;
   });
   if (saved) {
@@ -625,10 +851,31 @@ function renderPrices() {
 $("addCharacter").onclick = () => openCharacter();
 $("addSquad").onclick = () => openSquad();
 $("showPrices").onclick = () => $("pricesDialog").showModal();
+$("boardSearch").oninput = render;
+$("hideDone").onchange = render;
+$("foldCards").onclick = () => {
+  const keys = visibleCardKeys();
+  if (keys.every((key) => folded.has(key)))
+    keys.forEach((key) => folded.delete(key));
+  else keys.forEach((key) => folded.add(key));
+  render();
+};
 $("modes").onclick = (event) => {
   if (!event.target.dataset.mode) return;
   mode = event.target.dataset.mode;
   render();
+  $("board").animate(
+    [
+      { opacity: 0.62, transform: "translateY(3px)" },
+      { opacity: 1, transform: "none" },
+    ],
+    {
+      duration: matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? 0
+        : 180,
+      easing: "ease-out",
+    },
+  );
 };
 document.querySelectorAll("[data-close]").forEach((control) => {
   control.onclick = () => control.closest("dialog").close();

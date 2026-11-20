@@ -19,13 +19,16 @@
         <a class="brand" href="/"
           ><img src="/leaf.png" alt="" width="28" height="28" />단풍수첩</a
         >
-        <span id="week" class="muted"></span>
+        <span id="week" class="muted week-label"></span>
       </div>
     </header>
     <main class="shell">
       <div class="heading">
         <h1>보스 파티</h1>
-        <button id="addCharacter" class="primary">+ 캐릭터 추가</button>
+        <div class="tools">
+          <button id="addSquad">+ 파티 추가</button>
+          <button id="addCharacter" class="primary">+ 캐릭터 추가</button>
+        </div>
       </div>
       <section class="earnings" aria-label="결정석 수입" aria-live="polite">
         <div>
@@ -51,11 +54,33 @@
           <button data-mode="bosses" aria-pressed="false">보스별 보기</button>
         </nav>
         <div class="tools">
-          <button id="addSquad">+ 파티 추가</button
-          ><button id="openBulk" class="primary">보스 일괄 편집</button
+          <button id="openBulk" class="primary">보스 일괄 편집</button
           ><button id="showPrices">결정석 가격표</button>
         </div>
       </div>
+      <section class="finder" aria-label="보스 목록 필터">
+        <div class="finder-controls">
+          <input
+            type="search"
+            id="boardSearch"
+            placeholder="캐릭터, 보스, 파티 검색"
+            aria-label="캐릭터, 보스, 파티 검색"
+            autocomplete="off"
+          />
+          <label class="hide-done"
+            ><input type="checkbox" id="hideDone" />격파 숨기기</label
+          >
+          <button type="button" id="foldCards" aria-pressed="false">
+            모두 접기
+          </button>
+          <span id="boardCount" class="muted" aria-live="polite"></span>
+        </div>
+        <div
+          id="partyFilters"
+          class="party-filters"
+          aria-label="파티 필터"
+        ></div>
+      </section>
       <p id="boardStatus" class="muted" role="status"></p>
       <div id="board"></div>
       <p class="notice" id="warning" role="alert" hidden></p>
@@ -223,6 +248,22 @@
             maxlength="100"
             placeholder="예: 비숍님, 토요일 21시"
         /></label>
+        <fieldset class="palette-field">
+          <legend>파티 색</legend>
+          <div class="palette-controls">
+            <div
+              id="partyPalette"
+              class="swatches"
+              aria-label="추천 파티 색"
+            ></div>
+            <label class="custom-color"
+              >직접 지정<input id="squadColor" type="color" value="#b6a0ff"
+            /></label>
+          </div>
+          <div id="colorPreview" class="color-preview">
+            보스 목록에서 보이는 색
+          </div>
+        </fieldset>
         <div class="actions">
           <button type="button" id="removeSquad" class="danger" hidden>
             파티 삭제

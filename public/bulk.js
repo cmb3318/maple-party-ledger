@@ -1,5 +1,6 @@
 import { bosses, raidFor, saveBossPlan } from "./model.js";
 import { maxPlayers, share } from "./crystals.js";
+import { paintParty } from "./party-colors.js";
 
 const byId = (id) => document.getElementById(id);
 
@@ -94,6 +95,12 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
     const tr = document.createElement("tr");
     const bossName = row.boss.name;
     tr.dataset.included = row.included;
+    const showParty = () =>
+      paintParty(
+        tr,
+        getState().squads.find((item) => item.id === row.squadId),
+      );
+    showParty();
     const mark = checkbox(bossName + " 일괄 체크", marked.has(row.id), (on) => {
       if (on) marked.add(row.id);
       else marked.delete(row.id);
@@ -128,7 +135,9 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
       [size, "인원"],
     ]) {
       select.setAttribute("aria-label", bossName + " " + label);
-      tr.insertCell().append(select);
+      const cell = tr.insertCell();
+      cell.dataset.label = label;
+      cell.append(select);
     }
     const value = tr.insertCell();
     value.className = "bulk-value";
@@ -161,6 +170,7 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
       row.size =
         getState().squads.find((squad) => squad.id === row.squadId)?.size ?? 1;
       showSize();
+      showParty();
       editedRow();
     };
     size.onchange = () => {
