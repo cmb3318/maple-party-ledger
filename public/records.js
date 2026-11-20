@@ -49,14 +49,17 @@ export function setupRecords({
     writing = true;
     const changed = [];
     try {
-      await update((state) => {
-        const now = Date.now();
-        for (const entry of entries) {
-          const receipt = recordClear(state, entry, now);
-          if (receipt) changed.push(receipt);
-        }
-        if (remember && changed.length) state.active = remember;
-      });
+      await update(
+        (state) => {
+          const now = Date.now();
+          for (const entry of entries) {
+            const receipt = recordClear(state, entry, now);
+            if (receipt) changed.push(receipt);
+          }
+          if (remember && changed.length) state.active = remember;
+        },
+        { checks: true },
+      );
     } finally {
       writing = false;
     }
@@ -86,14 +89,17 @@ export function setupRecords({
     receipts = [];
     let count = 0;
     try {
-      await update((state) => {
-        for (const receipt of pending) {
-          if (undoClear(state, receipt)) {
-            recentlyChecked.delete(receipt.name + "-" + receipt.bossId);
-            count += 1;
+      await update(
+        (state) => {
+          for (const receipt of pending) {
+            if (undoClear(state, receipt)) {
+              recentlyChecked.delete(receipt.name + "-" + receipt.bossId);
+              count += 1;
+            }
           }
-        }
-      });
+        },
+        { checks: true },
+      );
     } finally {
       writing = false;
     }

@@ -1,4 +1,6 @@
 import { setupBulk } from "./bulk.js";
+import { setupBoardMotion } from "./board-motion.js";
+import { setupRaidSelection } from "./raid-selection.js";
 import { labelComplete, setupRecords } from "./records.js";
 import {
   bosses,
@@ -49,7 +51,18 @@ let busy = false;
 const soloKey = "solo";
 const folded = new Set([soloKey]);
 const boardCards = new Map();
+const board = $("board");
+const boardRows = new WeakMap();
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+const boardMotion = setupBoardMotion(board);
+const selection = setupRaidSelection(board, $("raidSelection"), (rows) => {
+  const entries = rows.map((row) => boardRows.get(row));
+  if (entries.length)
+    records.complete(
+      entries.map(({ raid }) => raid),
+      entries[0].now,
+    );
+});
 let partyFilter = "";
 
 let lastPeriod = "";
@@ -58,7 +71,7 @@ const dateFormat = new Intl.DateTimeFormat("ko-KR", {
   month: "numeric",
   day: "numeric",
 });
-function update(change) {
+function update(change, { checks = false } = {}) {
   const apply = () => {
     if (!temporary) {
       const fresh = load();
@@ -75,7 +88,10 @@ function update(change) {
         );
       }
     }
-    render();
+    render({
+      animateVisibility: checks && $("hideDone").checked,
+      justCleared: checks,
+    });
   };
   return navigator.locks
     ? navigator.locks.request(storageKey, apply)
@@ -202,7 +218,9 @@ function raidRow(raid, grouping, now) {
       "raid-row check-row" + (done ? " cleared" : ""),
     );
     paintParty(line, squad);
+    boardRows.set(line, { raid, now });
     line.dataset.raid = key;
+    line.dataset.motionKey = "raid-" + key;
     line.dataset.focus = "check-" + key;
     line.setAttribute("aria-pressed", done);
     line.setAttribute(
@@ -336,6 +354,7 @@ function collapsible(card, { key, name, subtitle, icon, actions, raids, now }) {
   const toggle = button(
     "",
     () => {
+      selection.reset();
       setOpen(folded.has(key), true);
       refreshBoardActions(now);
     },
@@ -352,6 +371,7 @@ function collapsible(card, { key, name, subtitle, icon, actions, raids, now }) {
   heading.append(toggle);
 
   const header = el("header", "", "card-head");
+  header.dataset.motionKey = "header-" + key;
   const body = el("div", "", "card-content");
   body.id = "card-content-" + encodeURIComponent(key);
   toggle.setAttribute("aria-controls", body.id);
@@ -454,13 +474,13 @@ function characterCard(character, raids, now) {
     const list = raids.filter((raid) => raid.boss.cycle === cycle);
     if (!list.length) continue;
     const cleared = list.filter((raid) => raid.done).length;
-    body.append(
-      el(
-        "h3",
-        cycleName(cycle) + " · " + cleared + "/" + list.length,
-        "section-title",
-      ),
+    const heading = el(
+      "h3",
+      cycleName(cycle) + " · " + cleared + "/" + list.length,
+      "section-title",
     );
+    heading.dataset.motionKey = "cycle-" + key + "-" + cycle;
+    body.append(heading);
     list.forEach((raid) => body.append(raidRow(raid, "characters", now)));
   }
   return card;
@@ -525,6 +545,7 @@ function squadGroup(squad, label, raids, now) {
     if (!list.length) continue;
     const section = el("section", "", "squad-character");
     const heading = el("div", "", "squad-character-head");
+    heading.dataset.motionKey = "member-" + key + "-" + character.name;
     heading.append(
       portrait(character),
       el("h3", character.name),
@@ -541,7 +562,11 @@ function squadGroup(squad, label, raids, now) {
   body.append(roster);
   return group;
 }
-function render() {
+function render({ animateVisibility = false, justCleared = false } = {}) {
+  selection.reset();
+  const previous = boardMotion.capture(
+    animateVisibility && interaction === "check" && !reduceMotion.matches,
+  );
   const now = Date.now();
   boardCards.clear();
   document.body.dataset.interaction = interaction;
@@ -613,7 +638,6 @@ function render() {
   });
   $("boardCount").textContent =
     (filtering ? visible.length + " / " : "") + raids.length + "개 배정";
-  const board = $("board");
   board.className = {
     characters: "character-grid",
     squads: "squad-board",
@@ -656,14 +680,16 @@ function render() {
   }
   if (!board.children.length) {
     const box = el("div", "", "empty-state");
+    box.dataset.motionKey = "empty";
     if (filtering) {
       box.append(
         el("h2", "필터에 맞는 배정이 없어요."),
         button("필터 초기화", () => {
+          const wasHiding = $("hideDone").checked;
           partyFilter = "";
           $("boardSearch").value = "";
           $("hideDone").checked = false;
-          render();
+          render({ animateVisibility: wasHiding });
         }),
       );
     } else if (mode === "squads") {
@@ -707,6 +733,7 @@ function render() {
     board.append(box);
   }
   refreshBoardActions(now);
+  boardMotion.play(previous, justCleared);
   lastPeriod = period("weekly", now).key + period("monthly", now).key;
   records.render(raids, now);
   if (focus)
@@ -746,6 +773,7 @@ function refreshBoardActions(now) {
   toggle.setAttribute("aria-pressed", allFolded);
   toggle.textContent = allFolded ? "모두 펼치기" : "모두 접기";
   toggle.onclick = () => {
+    selection.reset();
     for (const [key, card] of boardCards) {
       if (folded.has(key) !== allFolded) continue;
       card.setOpen(allFolded, true);
@@ -1003,7 +1031,7 @@ $("addCharacter").onclick = () => openCharacter();
 $("addSquad").onclick = () => openSquad();
 $("showPrices").onclick = () => $("pricesDialog").showModal();
 $("boardSearch").oninput = render;
-$("hideDone").onchange = render;
+$("hideDone").onchange = () => render({ animateVisibility: true });
 $("modes").onclick = (event) => {
   if (!event.target.dataset.mode) return;
   mode = event.target.dataset.mode;
@@ -1041,7 +1069,7 @@ function tick() {
 window.addEventListener("storage", (event) => {
   if (!temporary && (event.key === storageKey || event.key === null)) {
     state = load();
-    render();
+    render({ animateVisibility: $("hideDone").checked });
   }
 });
 window.addEventListener("focus", tick);

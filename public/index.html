@@ -113,6 +113,9 @@
             모두 접기
           </button>
           <span id="boardCount" class="muted" aria-live="polite"></span>
+          <span class="drag-hint muted" data-check-only
+            >드래그로 여러 보스 선택</span
+          >
         </div>
         <div
           id="partyFilters"
@@ -131,6 +134,21 @@
         >
       </footer>
     </main>
+    <div
+      id="raidSelection"
+      class="raid-selection"
+      role="group"
+      aria-label="선택한 보스"
+      hidden
+    >
+      <span data-selected-count role="status"></span>
+      <button
+        type="button"
+        data-complete-selection
+        class="record-button"
+      ></button>
+      <button type="button" data-cancel-selection>선택 해제</button>
+    </div>
     <div id="recordToast" class="record-toast" hidden>
       <span id="recordMessage" role="status"></span>
       <button type="button" id="undoRecord">되돌리기</button>
