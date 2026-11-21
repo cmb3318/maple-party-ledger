@@ -113,6 +113,27 @@ test("undoing an unchecked legacy record restores its period without fabricating
   assert.equal(state.parties[0].clearDetails.lotus, undefined);
 });
 
+test("undo cannot restore a weekly clear after Thursday midnight even when a monthly action remains valid", () => {
+  const state = plan();
+  const boundary = Date.parse("2026-11-19T00:00:00+09:00");
+  const receipts = plannedRaids(state, boundary - 1)
+    .filter((raid) => raid.boss.id !== "damien")
+    .map(({ boss }) =>
+      recordClear(
+        state,
+        {
+          name: state.parties[0].name,
+          bossId: boss.id,
+          periodKey: period(boss.cycle, boundary - 1).key,
+          done: true,
+        },
+        boundary - 1,
+      ),
+    );
+  assert.equal(undoClear(state, receipts[0], boundary), false);
+  assert.equal(undoClear(state, receipts[1], boundary), true);
+});
+
 test("scheduler only requests account-owned characters from Nexon and never returns identifiers", async () => {
   const state = plan();
   const currentDate = new Date(Date.now() + 9 * 3600000)

@@ -8,17 +8,14 @@
       name="description"
       content="메이플스토리 캐릭터별 보스 파티 배정과 결정석 수입 관리"
     />
-    <title>단풍수첩 · 보스 파티와 결정석</title>
-    <link rel="icon" href="/leaf.png" />
+    <title>메이플가계부 · 보스 파티와 결정석</title>
     <link rel="stylesheet" href="/style.css" />
     <script type="module" src="/app.js"></script>
   </head>
   <body>
     <header class="top">
       <div class="shell mast">
-        <a class="brand" href="/"
-          ><img src="/leaf.png" alt="" width="28" height="28" />단풍수첩</a
-        >
+        <a class="brand" href="/">메이플가계부</a>
         <div class="mast-actions">
           <span id="week" class="muted week-label"></span>
           <button id="openQuick" class="record-button" data-check-only>
@@ -155,7 +152,14 @@
     </div>
     <div id="recordToast" class="record-toast" hidden>
       <span id="recordMessage" role="status"></span>
-      <button type="button" id="undoRecord">되돌리기</button>
+      <button
+        type="button"
+        id="undoRecord"
+        title="Ctrl+Z"
+        aria-keyshortcuts="Control+Z"
+      >
+        되돌리기
+      </button>
       <button type="button" id="dismissRecord" aria-label="저장 알림 닫기">
         ×
       </button>
@@ -185,7 +189,15 @@
         <span id="quickProgress" class="muted"></span>
         <button id="quickComplete" type="button" disabled>0/0</button>
         <span id="quickNotice" role="status"></span>
-        <button id="quickUndo" type="button" hidden>되돌리기</button>
+        <button
+          id="quickUndo"
+          type="button"
+          title="Ctrl+Z"
+          aria-keyshortcuts="Control+Z"
+          hidden
+        >
+          되돌리기
+        </button>
         <button id="quickSync" type="button">
           넥슨 연동 <small>실험실</small>
         </button>
@@ -452,7 +464,8 @@
       </p>
     </dialog>
     <noscript
-      >단풍수첩을 사용하려면 브라우저에서 자바스크립트를 켜 주세요.</noscript
+      >메이플가계부를 사용하려면 브라우저에서 자바스크립트를 켜
+      주세요.</noscript
     >
   </body>
 </html>

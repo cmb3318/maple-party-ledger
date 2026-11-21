@@ -25,15 +25,20 @@ test("monthly rollover is independent of weekly clears and preserves recurring p
     b = newParty("파티원");
   const weekly = bosses[0],
     monthly = bosses.find((x) => x.id === "blackmage");
-  a.targets.push(weekly.id, monthly.id);
-  const now = at("2026-11-18T14:59:59.999Z");
-  for (const boss of [weekly, monthly])
-    a.clears[boss.id] = period(boss.cycle, now).key;
+  a.targets = bosses.map((boss) => boss.id);
+  const now = at("2026-11-18T23:59:59.999+09:00");
+  for (const boss of bosses) a.clears[boss.id] = period(boss.cycle, now).key;
   assert.equal(isCleared(b, weekly, now), false);
-  assert.equal(isCleared(a, weekly, now), true);
-  assert.equal(isCleared(a, weekly, now + 1), false);
-  assert.equal(isCleared(a, monthly, now + 1), true);
-  assert.equal(isCleared(a, monthly, at("2026-11-30T15:00:00Z")), false);
+  for (const boss of bosses) {
+    assert.equal(isCleared(a, boss, now), true);
+    assert.equal(isCleared(a, boss, now + 1), boss.cycle === "monthly");
+  }
+  const monthEnd = at("2026-11-30T23:59:59.999+09:00");
+  a.clears[weekly.id] = period("weekly", monthEnd).key;
+  assert.equal(period("monthly", monthEnd).end, monthEnd + 1);
+  assert.equal(isCleared(a, monthly, monthEnd), true);
+  assert.equal(isCleared(a, monthly, monthEnd + 1), false);
+  assert.equal(isCleared(a, weekly, monthEnd + 1), true);
   assert.ok(a.targets.includes("blackmage"));
 });
 test("saved profiles expire independently of local party notes", () => {

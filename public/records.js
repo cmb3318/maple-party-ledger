@@ -28,6 +28,7 @@ const time = new Intl.DateTimeFormat("ko-KR", {
 export function setupRecords({
   getState,
   canRecord,
+  undoHistory,
   update,
   button,
   el,
@@ -39,7 +40,6 @@ export function setupRecords({
   let mode = "open";
   let characterName = "";
   const recentlyChecked = new Set();
-  let receipts = [];
   let controller;
   let previews = [];
   let writing = false;
@@ -57,6 +57,11 @@ export function setupRecords({
             if (receipt) changed.push(receipt);
           }
           if (remember && changed.length) state.active = remember;
+          if (changed.length)
+            undoHistory.remember(
+              () => undoReceipts(changed),
+              () => canRecord() && !writing,
+            );
         },
         { checks: true },
       );
@@ -64,15 +69,17 @@ export function setupRecords({
       writing = false;
     }
     if (!changed.length) {
-      announce("이미 반영됐거나 기록 주기가 바뀌었어요.", false);
+      if (canRecord())
+        announce(
+          "이미 반영됐거나 기록 주기가 바뀌었어요.",
+          undoHistory.available,
+        );
       return;
     }
-    receipts = changed;
-    announce(message(changed.length), true);
+    if (canRecord()) announce(message(changed.length), true);
     return changed;
   }
   function announce(message, undo) {
-    if (!canRecord()) return;
     const inQuick = $("quickDialog").open;
     $("quickNotice").textContent = inQuick ? message : "";
     $("quickUndo").hidden = !inQuick || !undo;
@@ -82,17 +89,15 @@ export function setupRecords({
     if (!inQuick && undo && document.activeElement === document.body)
       $("undoRecord").focus({ preventScroll: true });
   }
-  async function undo() {
-    if (writing || !canRecord() || !receipts.length) return;
+  async function undoReceipts(receipts) {
     writing = true;
-    const pending = receipts;
-    receipts = [];
     let count = 0;
     try {
       await update(
         (state) => {
-          for (const receipt of pending) {
-            if (undoClear(state, receipt)) {
+          const now = Date.now();
+          for (const receipt of receipts) {
+            if (undoClear(state, receipt, now)) {
               recentlyChecked.delete(receipt.name + "-" + receipt.bossId);
               count += 1;
             }
@@ -105,7 +110,7 @@ export function setupRecords({
     }
     announce(
       count ? "격파 기록을 되돌렸어요." : "이미 변경되어 되돌릴 기록이 없어요.",
-      false,
+      undoHistory.available,
     );
   }
   function toggle(raid, done, periodKey = period(raid.boss.cycle).key) {
@@ -266,7 +271,7 @@ export function setupRecords({
     recentlyChecked.clear();
     $("recordToast").hidden = true;
     $("quickNotice").textContent = "";
-    $("quickUndo").hidden = true;
+    $("quickUndo").hidden = !undoHistory.available;
     $("quickDialog").showModal();
     render(raids);
     $("quickList").scrollTop = 0;
@@ -293,8 +298,7 @@ export function setupRecords({
   };
   $("quickOpen").onclick = () => changeView("open");
   $("quickDone").onclick = () => changeView("done");
-  $("quickUndo").onclick = undo;
-  $("undoRecord").onclick = undo;
+  $("quickUndo").onclick = $("undoRecord").onclick = () => undoHistory.undo();
   $("dismissRecord").onclick = () => {
     $("recordToast").hidden = true;
   };
@@ -408,5 +412,5 @@ export function setupRecords({
       (count) => "넥슨 스케줄러 격파 " + count + "건을 반영했어요.",
     );
   };
-  return { complete, open, render, toggle };
+  return { announce, complete, open, render, toggle };
 }

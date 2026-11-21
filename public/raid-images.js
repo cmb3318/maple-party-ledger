@@ -24,9 +24,10 @@ const bossFiles = {
 };
 
 export function bossIcon(boss) {
+  const frame = document.createElement("span");
+  frame.className = "emblem";
   const image = document.createElement("img");
   image.alt = "";
-  image.className = "emblem";
   image.decoding = "async";
   const fallback = "/badges/" + boss.id + ".png";
   if (bossFiles[boss.id]) {
@@ -36,7 +37,8 @@ export function bossIcon(boss) {
     };
   }
   image.src = bossFiles[boss.id] ? bossIconBase + bossFiles[boss.id] : fallback;
-  return image;
+  frame.append(image);
+  return frame;
 }
 
 export function standFrame(source) {

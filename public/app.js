@@ -53,15 +53,29 @@ const soloKey = "solo";
 const folded = new Set([soloKey]);
 const boardCards = new Map();
 const board = $("board");
-const partyOrder = setupPartyOrder(board, (id, targetId) => {
-  update((fresh) => {
-    const from = fresh.squads.findIndex((squad) => squad.id === id);
-    const to = fresh.squads.findIndex((squad) => squad.id === targetId);
-    if (from < 0 || to < 0 || from === to) return;
-    const [squad] = fresh.squads.splice(from, 1);
-    fresh.squads.splice(to, 0, squad);
-  });
-});
+const undoActions = [];
+let undoing = false;
+const undoHistory = {
+  remember(run, allowed = () => true) {
+    undoActions.push({ run, allowed });
+    if (undoActions.length > 30) undoActions.shift();
+  },
+  get available() {
+    return undoActions.at(-1)?.allowed() ?? false;
+  },
+  async undo() {
+    if (undoing || !this.available) return;
+    undoing = true;
+    try {
+      await undoActions.pop().run();
+    } finally {
+      undoing = false;
+    }
+  },
+};
+const partyOrder = setupPartyOrder(board, (id, targetId) =>
+  changePartyOrder(id, targetId),
+);
 const boardRows = new WeakMap();
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const boardMotion = setupBoardMotion(board);
@@ -76,6 +90,7 @@ const selection = setupRaidSelection(board, $("raidSelection"), (rows) => {
 let partyFilter = "";
 
 let lastPeriod = "";
+let resetTimer;
 const dateFormat = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul",
   month: "numeric",
@@ -106,6 +121,39 @@ function update(change, { checks = false } = {}) {
   return navigator.locks
     ? navigator.locks.request(storageKey, apply)
     : Promise.resolve(apply());
+}
+async function changePartyOrder(id, targetId) {
+  let changed = false;
+  await update((fresh) => {
+    const from = fresh.squads.findIndex((squad) => squad.id === id);
+    const to = fresh.squads.findIndex((squad) => squad.id === targetId);
+    if (from < 0 || to < 0 || from === to) return;
+    const before = fresh.squads.map((item) => item.id);
+    const [squad] = fresh.squads.splice(from, 1);
+    fresh.squads.splice(to, 0, squad);
+    const after = fresh.squads.map((item) => item.id);
+    changed = true;
+    undoHistory.remember(async () => {
+      let restored = false;
+      await update((current) => {
+        if (
+          current.squads.length !== after.length ||
+          !current.squads.every((item, index) => item.id === after[index])
+        )
+          return;
+        const byId = new Map(current.squads.map((item) => [item.id, item]));
+        current.squads = before.map((id) => byId.get(id));
+        restored = true;
+      });
+      records.announce(
+        restored
+          ? "파티 순서를 되돌렸어요."
+          : "파티 목록이 바뀌어서 되돌릴 수 없어요.",
+        undoHistory.available,
+      );
+    });
+  });
+  if (changed) records.announce("파티 순서를 저장했어요.", true);
 }
 function addProfile(name, profile) {
   return update((s) => {
@@ -745,7 +793,7 @@ function render({ animateVisibility = false, justCleared = false } = {}) {
   }
   refreshBoardActions(now);
   boardMotion.play(previous, justCleared);
-  lastPeriod = period("weekly", now).key + period("monthly", now).key;
+  scheduleReset(range, period("monthly", now));
   records.render(raids, now);
   if (focus)
     document
@@ -1079,7 +1127,19 @@ document.querySelectorAll("[data-close]").forEach((control) => {
   control.onclick = () => control.closest("dialog").close();
 });
 function tick() {
-  if (lastPeriod !== period("weekly").key + period("monthly").key) render();
+  const now = Date.now();
+  const weekly = period("weekly", now);
+  const monthly = period("monthly", now);
+  if (lastPeriod !== weekly.key + monthly.key) render();
+  else scheduleReset(weekly, monthly);
+}
+function scheduleReset(weekly, monthly) {
+  lastPeriod = weekly.key + monthly.key;
+  clearTimeout(resetTimer);
+  resetTimer = setTimeout(
+    tick,
+    Math.max(0, Math.min(weekly.end, monthly.end) - Date.now()),
+  );
 }
 window.addEventListener("storage", (event) => {
   if (!temporary && (event.key === storageKey || event.key === null)) {
@@ -1089,7 +1149,31 @@ window.addEventListener("storage", (event) => {
 });
 window.addEventListener("focus", tick);
 document.addEventListener("visibilitychange", tick);
-setInterval(tick, 1000);
+window.addEventListener("keydown", (event) => {
+  if (
+    event.defaultPrevented ||
+    !event.ctrlKey ||
+    event.altKey ||
+    event.shiftKey ||
+    event.metaKey ||
+    event.isComposing ||
+    event.repeat ||
+    event.key.toLowerCase() !== "z"
+  )
+    return;
+  const target = event.target;
+  if (
+    target.isContentEditable ||
+    target.matches?.(
+      "input:not([type='checkbox']):not([type='radio']), textarea",
+    ) ||
+    document.querySelector("dialog[open]:not(#quickDialog)") ||
+    !undoHistory.available
+  )
+    return;
+  event.preventDefault();
+  undoHistory.undo();
+});
 const bulk = setupBulk({
   getState: () => state,
   update,
@@ -1102,6 +1186,7 @@ const bulk = setupBulk({
 const records = setupRecords({
   getState: () => state,
   canRecord: () => interaction === "check",
+  undoHistory,
   update,
   button,
   el,

@@ -178,8 +178,6 @@ h3 {
   color: var(--ink);
   letter-spacing: -0.04em;
 }
-.brand img,
-.emblem,
 .portrait {
   image-rendering: pixelated;
 }
@@ -494,7 +492,7 @@ dialog,
 }
 .portrait img {
   position: absolute;
-  left: 16px;
+  left: 19px;
   top: 16px;
   max-width: none;
   transform: translate(-48.6667%, -52.3333%);
@@ -503,7 +501,7 @@ dialog,
   /* 300 × 300 API frame. Keep the eyes and chin in a 32 × 32 window. */
   width: 300px;
   height: 300px;
-  left: -130px;
+  left: -127px;
   top: -141px;
   transform: none;
 }
@@ -546,19 +544,47 @@ dialog,
   background: radial-gradient(circle, currentColor 1px, transparent 1.6px) 0 0 /
     4.5px 5px;
 }
-.party-order-source .card-head {
-  opacity: 0.6;
-}
-.party-order-source .party-grip {
+.party-order-active {
+  position: relative;
+  overflow-anchor: none;
   cursor: grabbing;
-  transform: none;
 }
-[data-order-drop] > .card-head {
-  box-shadow: inset 0 2px var(--mint);
-  background: color-mix(in srgb, var(--mint) 11%, transparent);
+.party-order-slot {
+  min-width: 0;
+  padding: 0.65rem;
+  outline: 1px dashed #76e0ba8c;
+  outline-offset: -1px;
+  background: linear-gradient(140deg, #76e0ba26, #76e0ba08 6rem);
+  color: var(--mint);
+  font-size: 0.82rem;
 }
-[data-order-drop="after"] > .card-head {
-  box-shadow: inset 0 -2px var(--mint);
+.party-order-outside {
+  opacity: 0.45;
+}
+.party-order-ghost {
+  position: fixed;
+  inset: 0 auto auto 0;
+  z-index: 12;
+  pointer-events: none;
+  max-width: min(15rem, calc(100vw - 16px));
+  padding: 0.45rem 0.68rem;
+  background: color-mix(
+    in srgb,
+    var(--grab-color, var(--mint)) 22%,
+    var(--panel)
+  );
+  box-shadow:
+    inset 2px 0 var(--grab-color, var(--mint)),
+    0 0.45rem 1.2rem #0009;
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.party-order-ghost small {
+  display: block;
+  color: var(--mint);
+  font-size: 0.72rem;
 }
 .scope-complete,
 #completeShown,
@@ -604,21 +630,26 @@ dialog,
   font-size: 0.75rem;
 }
 .emblem {
-  width: 1.7rem;
-  height: 1.7rem;
-  object-fit: contain;
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 2px;
   flex: none;
+  overflow: hidden;
+  background: #252736;
+  vertical-align: middle;
+}
+.emblem img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .price-boss {
   display: inline-flex;
   align-items: center;
   gap: 0.28rem;
-}
-.price-boss .emblem,
-.bulk-table tbody th .emblem {
-  width: 1.22rem;
-  height: 1.22rem;
-  vertical-align: middle;
 }
 .bulk-table tbody th .emblem {
   margin-inline-end: 0.28rem;
@@ -1632,11 +1663,6 @@ button.record-row[aria-pressed="true"] {
   align-items: center;
   gap: 0.34rem;
   min-width: 0;
-}
-.setup-row .raid-identity .emblem,
-.check-identity .emblem {
-  width: 1.13rem;
-  height: 1.13rem;
 }
 .setup-row .value {
   grid-column: -3;
