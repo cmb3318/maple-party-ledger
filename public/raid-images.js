@@ -1,43 +1,45 @@
 import { safeImage } from "./model.js";
 
 const bossIconBase =
-  "https://dae-y.github.io/maple_tools/assets/boss-income-calculator/boss-icons/";
-const bossFiles = {
-  lotus: "swoo.webp",
-  damien: "damien.webp",
-  slime: "guardianslime.png",
-  lucid: "lucid.webp",
-  will: "will.webp",
-  dusk: "dusk.webp",
-  darknell: "dunkel.png",
-  hilla: "versushilla.webp",
-  seren: "seren.png",
-  kalos: "kalos.png",
-  adversary: "firstadversary.webp",
-  kaling: "kaling.webp",
-  star: "radiantmaleficstar.png",
-  bellona: "bellona.png",
-  limbo: "limbo.png",
-  baldrix: "baldrix.png",
-  jupiter: "jupiter.png",
-  blackmage: "blackmage.webp",
+  "https://raw.githubusercontent.com/MapleYoil/MapleDay/efe8ecfb6c8ec51d0187d29adeb2a14df4ed0836/src/MapleDay/Assets/Scheduler/Bosses/";
+const schedulerIconIds = {
+  lotus: 13,
+  damien: 15,
+  slime: 29,
+  lucid: 19,
+  will: 23,
+  dusk: 26,
+  darknell: 27,
+  hilla: 24,
+  seren: 28,
+  kalos: 30,
+  adversary: 35,
+  kaling: 31,
+  star: 37,
+  bellona: 41,
+  limbo: 33,
+  baldrix: 34,
+  jupiter: 38,
+  blackmage: 25,
 };
 
 export function bossIcon(boss) {
   const frame = document.createElement("span");
   frame.className = "emblem";
-  if (boss.id === "lotus") frame.classList.add("emblem-lotus");
   const image = document.createElement("img");
   image.alt = "";
   image.decoding = "async";
-  const fallback = "/badges/" + boss.id + ".png";
-  if (bossFiles[boss.id]) {
+  const fallback = `/badges/${boss.id === "hilla" ? "hillahard" : boss.id}.png`;
+  const iconId = schedulerIconIds[boss.id];
+  if (iconId === undefined) {
+    image.src = fallback;
+  } else {
     image.onerror = () => {
       image.onerror = null;
       image.src = fallback;
     };
+    image.src = `${bossIconBase}icon_${iconId}.png`;
   }
-  image.src = bossFiles[boss.id] ? bossIconBase + bossFiles[boss.id] : fallback;
   frame.append(image);
   return frame;
 }

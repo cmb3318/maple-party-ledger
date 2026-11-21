@@ -2,4 +2,4 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: no-referrer
   X-Frame-Options: DENY
-  Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; connect-src 'self' https://open.api.nexon.com; img-src 'self' https://open.api.nexon.com https://avatar.maplestory.nexon.com https://dae-y.github.io/maple_tools/assets/boss-income-calculator/boss-icons/; script-src 'self'; style-src 'self'; form-action 'self'
+  Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; connect-src 'self' https://open.api.nexon.com; img-src 'self' https://open.api.nexon.com https://avatar.maplestory.nexon.com https://raw.githubusercontent.com/MapleYoil/MapleDay/efe8ecfb6c8ec51d0187d29adeb2a14df4ed0836/src/MapleDay/Assets/Scheduler/Bosses/; script-src 'self'; style-src 'self'; form-action 'self'

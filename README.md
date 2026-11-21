@@ -64,4 +64,4 @@ KMS용 넥슨 앱 키를 Pages 프로젝트의 **Settings → Variables and Secr
 - [보스 파티 모집 대상 및 난이도](https://maplestory.nexon.com/News/Update/816), [주간 초기화](https://maplestory.nexon.com/News/Update/790), [검은 마법사 월간 초기화](https://gi.maplestory.nexon.com/Guide/GameInformation/Boss/BlackMagician)
 - [Cloudflare Pages 암호화된 Secret](https://developers.cloudflare.com/pages/functions/bindings/#secrets) 및 [직접 배포](https://developers.cloudflare.com/pages/get-started/direct-upload/)
 
-Data based on NEXON Open API. 게임 데이터의 권리는 각 권리자에게 있습니다. 보스 아이콘은 [메이플툴즈 주간보스 수익 계산기](https://dae-y.github.io/maple_tools/boss-income-calculator.html)에 게시된 이미지를 연결해 표시합니다. 풍경과 대체 표식은 이 앱을 위해 만든 픽셀 일러스트입니다.
+Data based on NEXON Open API. 보스 아이콘은 메이플스토리 인게임 스케줄러에서 추출해 [메요일 GitHub](https://github.com/MapleYoil/MapleDay/tree/efe8ecfb6c8ec51d0187d29adeb2a14df4ed0836/src/MapleDay/Assets/Scheduler/Bosses)에 공개한 PNG를 연결해 표시합니다. 게임 데이터와 아이콘의 권리는 각 권리자에게 있습니다. 풍경과 대체 표식은 이 앱을 위해 만든 픽셀 일러스트입니다.
