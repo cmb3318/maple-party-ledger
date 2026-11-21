@@ -347,6 +347,12 @@ dialog,
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 .party-filter small {
   margin-left: 0.4rem;
@@ -355,6 +361,10 @@ dialog,
 .party-filter[aria-pressed="true"] {
   background: #393553;
   color: #f4edff;
+}
+.party-filter-reset[aria-disabled="true"] {
+  opacity: 0.48;
+  cursor: default;
 }
 .party-colored {
   --team-ink: color-mix(in srgb, var(--party) 48%, white);
@@ -395,7 +405,11 @@ dialog,
 }
 .character-grid,
 .group-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 23.4rem), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
+}
+#board {
+  align-content: start;
+  overflow-anchor: none;
 }
 .card {
   min-width: 0;
@@ -661,6 +675,11 @@ dialog,
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+.boss-card .card-toggle > .emblem {
+  width: 44px;
+  height: 44px;
+  padding: 4px;
 }
 .price-boss {
   display: inline-flex;
@@ -1773,6 +1792,13 @@ button.record-row[aria-pressed="true"] {
   container-type: inline-size;
   position: absolute;
   overflow: clip;
+}
+.board-field-flight {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .board-exit > .card-head {
   background: var(--panel);

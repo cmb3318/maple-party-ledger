@@ -90,7 +90,7 @@ const selection = setupRaidSelection(board, $("raidSelection"), (rows) => {
       entries[0].now,
     );
 });
-let partyFilter = "";
+const selectedParties = new Set();
 
 let lastPeriod = "";
 let resetTimer;
@@ -238,6 +238,7 @@ function difficultyTag(level) {
 function raidRow(raid, grouping, now) {
   const { boss, character, level, size, value, done, note, squad } = raid;
   const key = character.name + "-" + boss.id;
+  const motionKey = grouping + "-raid-" + key;
   const title = grouping === "bosses" ? character.name : boss.name;
   const name = el("b", title);
   name.title = title;
@@ -251,7 +252,7 @@ function raidRow(raid, grouping, now) {
     paintParty(line, squad);
     boardRows.set(line, { raid, now });
     line.dataset.raid = key;
-    line.dataset.motionKey = "raid-" + key;
+    line.dataset.motionKey = motionKey;
     line.dataset.focus = "check-" + key;
     line.setAttribute("aria-pressed", done);
     line.setAttribute(
@@ -272,16 +273,19 @@ function raidRow(raid, grouping, now) {
     mark.setAttribute("aria-hidden", "true");
     const identity = el("span", "", "check-identity");
     const titleLine = el("span", "", "raid-title");
-    titleLine.append(name, " ", difficultyTag(level));
+    const levelTag = difficultyTag(level);
+    levelTag.dataset.motionField = "level";
+    titleLine.append(name, " ", levelTag);
     identity.append(
       grouping === "bosses" ? portrait(character) : bossIcon(boss),
       titleLine,
     );
     const details = el("span", "", "check-details");
-    details.append(
-      el("span", partyName(raid), "raid-party"),
-      el("span", size + "인"),
-    );
+    const partyTag = el("span", partyName(raid), "raid-party");
+    partyTag.dataset.motionField = "party";
+    const sizeTag = el("span", size + "인");
+    sizeTag.dataset.motionField = "size";
+    details.append(partyTag, sizeTag);
     line.append(mark, identity, details, el("span", meso(value), "value"));
     if (note) line.append(el("span", note, "raid-note"));
     return line;
@@ -289,6 +293,7 @@ function raidRow(raid, grouping, now) {
   const line = el("div", "", "raid-row setup-row");
   paintParty(line, squad);
   line.dataset.raid = key;
+  line.dataset.motionKey = motionKey;
   const identity = el("span", "", "raid-identity");
   identity.append(
     grouping === "bosses" ? portrait(character) : bossIcon(boss),
@@ -302,6 +307,7 @@ function raidRow(raid, grouping, now) {
       character.name + " " + boss.name + " " + label,
     );
     control.dataset.focus = field + "-" + key;
+    control.dataset.motionField = field;
     addOptions(control, choices);
     control.value = selected;
     if (field === "level") control.dataset.level = selected;
@@ -431,6 +437,7 @@ function collapsible(
   }
   if (actions?.childElementCount) header.append(actions);
   card.dataset.cardKey = key;
+  card.dataset.motionKey = "card-" + key;
   card.append(header, body);
 
   let animation;
@@ -637,11 +644,16 @@ function markClearedScopes(raids) {
       node.classList.add("scope-cleared");
   }
 }
-function render({ animateVisibility = false, justCleared = false } = {}) {
+function render({
+  animateVisibility = false,
+  justCleared = false,
+  morphControls = false,
+} = {}) {
   cardOrder.reset();
   selection.reset();
   const previous = boardMotion.capture(
-    animateVisibility && interaction === "check" && !reduceMotion.matches,
+    (animateVisibility || morphControls) && !reduceMotion.matches,
+    morphControls,
   );
   const now = Date.now();
   boardCards.clear();
@@ -687,8 +699,9 @@ function render({ animateVisibility = false, justCleared = false } = {}) {
   for (const control of $("modes").children)
     control.setAttribute("aria-pressed", control.dataset.mode === mode);
   document.querySelector("main").dataset.mode = mode;
-  if (partyFilter && !state.squads.some((squad) => squad.id === partyFilter))
-    partyFilter = "";
+  const partyIds = new Set(state.squads.map((squad) => squad.id));
+  for (const id of selectedParties)
+    if (!partyIds.has(id)) selectedParties.delete(id);
   paintFilters(raids);
   const terms = $("boardSearch")
     .value.trim()
@@ -696,10 +709,11 @@ function render({ animateVisibility = false, justCleared = false } = {}) {
     .split(/\s+/)
     .filter(Boolean);
   const hideDone = interaction === "check" && $("hideDone").checked;
-  const filtering = Boolean(terms.length || partyFilter || hideDone);
+  const filtering = Boolean(terms.length || selectedParties.size || hideDone);
   const visible = raids.filter((raid) => {
     if (hideDone && raid.done) return false;
-    if (partyFilter && raid.squad?.id !== partyFilter) return false;
+    if (selectedParties.size && !selectedParties.has(raid.squad?.id))
+      return false;
     const text = [
       raid.character.name,
       raid.character.profile?.world,
@@ -725,7 +739,7 @@ function render({ animateVisibility = false, justCleared = false } = {}) {
     for (const character of state.parties) {
       const list = visible.filter((raid) => raid.character === character);
       const matchingName =
-        !partyFilter &&
+        !selectedParties.size &&
         !hideDone &&
         terms.length &&
         terms.every((term) => character.name.toLowerCase().includes(term));
@@ -748,7 +762,7 @@ function render({ animateVisibility = false, justCleared = false } = {}) {
         ({ squad, list }) =>
           list.length ||
           !filtering ||
-          (!hideDone && !terms.length && partyFilter === squad.id),
+          (!hideDone && !terms.length && selectedParties.has(squad.id)),
       );
     for (const { squad, list } of shownSquads) {
       parties.append(
@@ -779,11 +793,10 @@ function render({ animateVisibility = false, justCleared = false } = {}) {
       box.append(
         el("h2", "필터에 맞는 배정이 없어요."),
         button("필터 초기화", () => {
-          const wasHiding = $("hideDone").checked;
-          partyFilter = "";
+          selectedParties.clear();
           $("boardSearch").value = "";
           $("hideDone").checked = false;
-          render({ animateVisibility: wasHiding });
+          render({ animateVisibility: true });
         }),
       );
     } else if (mode === "squads") {
@@ -820,7 +833,7 @@ function render({ animateVisibility = false, justCleared = false } = {}) {
         el("h2", "선택한 보스가 없어요"),
         button("캐릭터별 보기", () => {
           mode = "characters";
-          render();
+          render({ animateVisibility: true });
         }),
       );
     }
@@ -879,29 +892,56 @@ function refreshBoardActions(now) {
 function paintFilters(raids) {
   const filters = $("partyFilters");
   filters.hidden = !state.squads.length;
-  filters.replaceChildren();
-  if (filters.hidden) return;
-  for (const [id, label, squad] of [
-    ["", "모든 파티", null],
-    ...state.squads.map((squad) => [squad.id, squad.name, squad]),
-  ]) {
-    const count = squad
-      ? raids.filter((raid) => raid.squad === squad).length
-      : null;
-    const chip = button(
-      label,
-      () => {
-        partyFilter = partyFilter === id ? "" : id;
-        render();
-      },
-      "party-filter",
-    );
-    if (count !== null) chip.append(el("small", String(count)));
-    paintParty(chip, squad);
-    chip.dataset.focus = "party-filter-" + id;
-    chip.setAttribute("aria-pressed", partyFilter === id);
-    filters.append(chip);
+  if (filters.hidden) {
+    filters.replaceChildren();
+    return;
   }
+  const existing = [...filters.children];
+  const chips = new Map(existing.map((chip) => [chip.dataset.focus, chip]));
+  const resetKey = "clear-party-filters";
+  const reset =
+    chips.get(resetKey) ??
+    button(
+      "필터 해제",
+      () => {
+        if (!selectedParties.size) return;
+        selectedParties.clear();
+        render({ animateVisibility: true });
+      },
+      "party-filter party-filter-reset",
+    );
+  reset.dataset.focus = resetKey;
+  reset.setAttribute("aria-disabled", !selectedParties.size);
+  const ordered = [reset];
+  for (const squad of state.squads) {
+    const { id, name } = squad;
+    const count = raids.filter((raid) => raid.squad === squad).length;
+    const key = "party-filter-" + id;
+    let chip = chips.get(key);
+    if (!chip) {
+      chip = button(
+        "",
+        () => {
+          if (selectedParties.has(id)) selectedParties.delete(id);
+          else selectedParties.add(id);
+          render({ animateVisibility: true });
+        },
+        "party-filter",
+      );
+      chip.append(el("span"), el("small"));
+    }
+    chip.firstElementChild.textContent = name;
+    chip.lastElementChild.textContent = count;
+    paintParty(chip, squad);
+    chip.dataset.focus = key;
+    chip.setAttribute("aria-pressed", selectedParties.has(id));
+    ordered.push(chip);
+  }
+  if (
+    existing.length !== ordered.length ||
+    ordered.some((chip, index) => chip !== existing[index])
+  )
+    filters.replaceChildren(...ordered);
 }
 const newSquadOption = "@new";
 let raidTarget;
@@ -1129,31 +1169,20 @@ function renderPrices() {
 $("addCharacter").onclick = () => openCharacter();
 $("addSquad").onclick = () => openSquad();
 $("showPrices").onclick = () => $("pricesDialog").showModal();
-$("boardSearch").oninput = render;
+$("boardSearch").oninput = () => render({ animateVisibility: true });
 $("hideDone").onchange = () => render({ animateVisibility: true });
 $("modes").onclick = (event) => {
-  if (!event.target.dataset.mode) return;
-  mode = event.target.dataset.mode;
-  render();
-  $("board").animate(
-    [
-      { opacity: 0.62, transform: "translateY(3px)" },
-      { opacity: 1, transform: "none" },
-    ],
-    {
-      duration: matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? 0
-        : 180,
-      easing: "ease-out",
-    },
-  );
+  const next = event.target.closest("[data-mode]")?.dataset.mode;
+  if (!next || next === mode) return;
+  mode = next;
+  render({ animateVisibility: true });
 };
 function setInteraction(next) {
   if (interaction === next) return;
   interaction = next;
   $("recordToast").hidden = true;
   $("boardStatus").textContent = "";
-  render();
+  render({ morphControls: true });
 }
 $("interactionModes").onclick = (event) => {
   if (event.target.dataset.interaction)
