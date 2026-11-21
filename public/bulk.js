@@ -26,6 +26,10 @@ function checkbox(label, checked, change) {
 
 export function setupBulk({ getState, update, openSquad, meso, notify }) {
   const dialog = byId("bulkDialog");
+  const massLevel = byId("massLevel");
+  const selectionToggle = byId("toggleBulkSelection");
+  const copyMode = byId("copyMode");
+  const markedCopy = copyMode.querySelector('[value="marked"]');
   let sourceName = "";
   let draft = [];
   let recipients = new Set();
@@ -57,15 +61,16 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
     byId("markAll").indeterminate =
       markedVisible > 0 && markedVisible < shown.length;
     byId("markAll").disabled = !shown.length;
-    byId("bulkMarked").textContent = marked.size + "개 체크";
+    byId("bulkMarked").textContent = marked.size + "개 선택";
+    massLevel.dataset.level = massLevel.value;
     for (const id of ["applyMass", "excludeMass", "clearMarks"])
       byId(id).disabled = !marked.size;
     byId("applyMass").textContent =
-      byId("massLevel").value ||
+      massLevel.value ||
       byId("massSquad").value !== "keep" ||
       byId("massSize").value
-        ? "체크한 보스에 적용"
-        : "체크한 보스 추가";
+        ? "선택한 보스에 적용"
+        : "선택한 보스 등록";
     byId("bulkMessage").textContent = message;
     const included = draft.filter(
       (row) => row.included && row.boss.cycle === "weekly",
@@ -102,31 +107,38 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
         getState().squads.find((item) => item.id === row.squadId),
       );
     showParty();
-    const mark = checkbox(bossName + " 일괄 체크", marked.has(row.id), (on) => {
+    const mark = checkbox(bossName + " 일괄 선택", marked.has(row.id), (on) => {
       if (on) marked.add(row.id);
       else marked.delete(row.id);
       tr.classList.toggle("marked", on);
       updateStatus();
     });
     tr.classList.toggle("marked", mark.checked);
-    tr.insertCell().append(mark);
-    const name = document.createElement("th");
-    name.scope = "row";
-    name.append(bossIcon(row.boss), bossName);
-    if (row.boss.cycle === "monthly") {
-      const label = document.createElement("small");
-      label.textContent = "월간";
-      name.append(label);
-    }
-    tr.append(name);
-    const going = checkbox(bossName + " 가기", row.included, (on) => {
+    const markCell = tr.insertCell();
+    markCell.className = "bulk-mark";
+    markCell.append(mark);
+    const bossCell = document.createElement("th");
+    bossCell.className = "bulk-boss";
+    bossCell.scope = "row";
+    const register = document.createElement("label");
+    register.className = "bulk-register";
+    const going = checkbox(bossName + " 등록", row.included, (on) => {
       row.included = on;
       edited.add(row.id);
       tr.dataset.included = on;
       if (!on && byId("bulkFilter").value === "included") renderRows();
       updateStatus();
     });
-    tr.insertCell().append(going);
+    const name = document.createElement("span");
+    name.textContent = bossName;
+    if (row.boss.cycle === "monthly") {
+      const label = document.createElement("small");
+      label.textContent = "월간";
+      name.append(label);
+    }
+    register.append(going, bossIcon(row.boss), name);
+    bossCell.append(register);
+    tr.append(bossCell);
     const level = document.createElement("select");
     const party = document.createElement("select");
     const size = document.createElement("select");
@@ -147,8 +159,10 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
       row.boss.levels.map((name) => [name, name]),
       row.level,
     );
+    for (const option of level.options) option.dataset.level = option.value;
     options(party, squadChoices(), row.squadId);
     function showSize() {
+      level.dataset.level = row.level;
       const limit = maxPlayers(row.boss, row.level);
       row.size = Math.min(row.size, limit);
       options(size, playerOptions(limit), row.size);
@@ -188,7 +202,7 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
     body.replaceChildren(...rows.map(makeRow));
     if (!rows.length) {
       const cell = body.insertRow().insertCell();
-      cell.colSpan = 7;
+      cell.colSpan = dialog.hasAttribute("data-selecting") ? 6 : 5;
       cell.textContent = "아직 가는 보스가 없어요. ‘전체 보스’에서 추가하세요.";
     }
   }
@@ -231,7 +245,7 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
     marked.clear();
     recipients.clear();
     byId("bulkFilter").value = "all";
-    byId("copyMode").value = "merge";
+    copyMode.value = "merge";
     showRecipients();
     renderRows();
     updateStatus();
@@ -247,6 +261,14 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
     renderRows();
     updateStatus();
   }
+  function showSelection(selecting) {
+    dialog.toggleAttribute("data-selecting", selecting);
+    byId("bulkControls").hidden = !selecting;
+    selectionToggle.setAttribute("aria-expanded", selecting);
+    markedCopy.hidden = !selecting;
+    if (!selecting && copyMode.value === "marked") copyMode.value = "merge";
+    byId("bulkTitle").textContent = selecting ? "보스 일괄 편집" : "보스 편집";
+  }
   function open(name) {
     const state = getState();
     if (!state.parties.length) return;
@@ -257,9 +279,9 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
     );
     if (byId("bulkSource").selectedIndex < 0)
       byId("bulkSource").selectedIndex = 0;
-    byId("copyMode").value = "merge";
     byId("bulkCopy").open = false;
-    byId("massLevel").value = "";
+    massLevel.value = "";
+    showSelection(!name);
     options(byId("massSize"), [["유지", ""], ...playerOptions(6)], "");
     dialog.showModal();
     options(byId("massSquad"), [["유지", "keep"], ...squadChoices()], "keep");
@@ -290,6 +312,11 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
     updateStatus();
   };
   byId("bulkNewSquad").onclick = () => openSquad();
+  selectionToggle.onclick = () => {
+    showSelection(!dialog.hasAttribute("data-selecting"));
+    renderRows();
+    updateStatus();
+  };
   for (const id of ["massLevel", "massSquad", "massSize"])
     byId(id).onchange = () => updateStatus();
   byId("markAll").onchange = () => {
@@ -317,7 +344,7 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
     updateStatus();
   };
   byId("applyMass").onclick = () => {
-    const level = byId("massLevel").value;
+    const level = massLevel.value;
     const squadId = byId("massSquad").value;
     const inputSize = Number(byId("massSize").value);
     const partyDefault =
@@ -357,17 +384,17 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
     updateStatus(rows.length + "개를 가는 보스에서 뺐어요.");
   };
   async function save(next = "") {
-    const copyMode = byId("copyMode").value;
-    if (recipients.size && copyMode === "marked" && !marked.size) {
-      updateStatus("복사할 보스 행을 체크해 주세요.");
+    const scope = copyMode.value;
+    if (recipients.size && scope === "marked" && !marked.size) {
+      updateStatus("복사할 보스 행을 일괄 선택해 주세요.");
       return;
     }
     const copies =
-      copyMode === "marked"
+      scope === "marked"
         ? selectedRows()
         : draft.filter((row) => row.included);
     const changes = draft.filter((row) => edited.has(row.id));
-    const replace = copyMode === "replace";
+    const replace = scope === "replace";
     if (
       recipients.size &&
       replace &&
@@ -379,7 +406,7 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
       )
     )
       return;
-    if (recipients.size && copyMode === "merge" && !copies.length) {
+    if (recipients.size && scope === "merge" && !copies.length) {
       updateStatus("복사할 ‘가는 보스’를 한 개 이상 추가해 주세요.");
       return;
     }

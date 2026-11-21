@@ -667,9 +667,6 @@ dialog,
   align-items: center;
   gap: 0.28rem;
 }
-.bulk-table tbody th .emblem {
-  margin-inline-end: 0.28rem;
-}
 .raid-row {
   position: relative;
   display: grid;
@@ -979,6 +976,16 @@ tbody tr:nth-child(even) {
   max-height: calc(min(94dvh, 59rem) - 1.8rem);
   gap: 0.46rem;
 }
+#bulkDialog:not([data-selecting]) .bulk-layout {
+  grid-template-rows: auto auto minmax(8rem, 1fr) auto;
+}
+#bulkDialog:not([data-selecting]) .bulk-mark {
+  display: none;
+}
+#toggleBulkSelection[aria-expanded="true"] {
+  color: #eadfff;
+  background: #392e52;
+}
 .bulk-head h2 {
   font-size: 1.18rem;
 }
@@ -1017,6 +1024,7 @@ tbody tr:nth-child(even) {
 }
 #bulkMessage:not(:empty) {
   color: var(--mint);
+  flex: 0 0 100%;
 }
 #bulkMessage:empty {
   display: none;
@@ -1045,32 +1053,43 @@ tbody tr:nth-child(even) {
   text-align: left;
   padding: 0.22rem 0.36rem;
 }
-.bulk-table thead th:nth-child(1) {
+.bulk-table thead .bulk-mark {
   width: 1.95rem;
 }
-.bulk-table thead th:nth-child(2) {
+.bulk-table thead .bulk-boss {
   width: 22%;
 }
 .bulk-table thead th:nth-child(3) {
-  width: 2.6rem;
-}
-.bulk-table thead th:nth-child(4) {
   width: 5.8rem;
 }
-.bulk-table thead th:nth-child(6) {
+.bulk-table thead th:nth-child(5) {
   width: 4.2rem;
 }
-.bulk-table thead th:nth-child(7) {
+.bulk-table thead th:nth-child(6) {
   width: 8.6rem;
 }
-.bulk-table tbody th {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.bulk-table tbody .bulk-boss {
+  padding: 0;
 }
-.bulk-table tbody th small {
+.bulk-register {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.3rem;
+  padding: 0.28rem 0.45rem;
+  color: inherit;
+  font: inherit;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.bulk-register:is(:hover, :has(input:focus-visible)) {
+  background: color-mix(in srgb, var(--mint) 12%, transparent);
+}
+.bulk-register small {
   color: var(--muted);
-  margin-left: 0.3rem;
   font-size: 0.71rem;
+  white-space: nowrap;
 }
 .bulk-table tbody tr[data-included="false"] th {
   color: var(--muted);
@@ -1082,28 +1101,29 @@ tbody tr:nth-child(even) {
   background: color-mix(in srgb, var(--party) 11%, #1b1d2b);
   box-shadow: inset 2px 0 var(--team-ink);
 }
-.bulk-table tr.marked {
+#bulkDialog[data-selecting] .bulk-table tr.marked {
   background: #352c49;
 }
-.bulk-table tr.party-colored.marked {
+#bulkDialog[data-selecting] .bulk-table tr.party-colored.marked {
   background: color-mix(in srgb, var(--party) 24%, #262139);
 }
-.bulk-table tr.marked th[scope="row"] {
+#bulkDialog[data-selecting] .bulk-table tr.marked th[scope="row"] {
   color: #f0e6ff;
 }
 .bulk-table select {
   font-size: 0.77rem;
   padding: 0.25rem 0.32rem;
 }
-.bulk-table tr.party-colored td:nth-child(5) select {
+.bulk-table tr.party-colored td[data-label="파티"] select {
   color: var(--team-ink);
 }
 .bulk-table input[type="checkbox"],
 .copy-targets input {
   accent-color: var(--violet);
 }
-.bulk-table td:nth-child(3) input {
+.bulk-table .bulk-register input {
   accent-color: var(--mint);
+  flex: none;
 }
 .bulk-value {
   color: #cebffc;
@@ -1228,34 +1248,34 @@ tbody tr:nth-child(even) {
     align-items: center;
   }
   .bulk-table thead tr {
-    grid-template-columns: 1.95rem 1fr auto;
+    grid-template-columns: var(--bulk-mark-width, 0px) minmax(0, 1fr);
   }
-  .bulk-table thead th:nth-child(2) {
+  #bulkDialog[data-selecting] .bulk-table {
+    --bulk-mark-width: 1.95rem;
+  }
+  .bulk-table thead .bulk-boss {
     width: auto;
   }
-  .bulk-table thead th:nth-child(3) {
-    width: auto;
-  }
-  .bulk-table thead th:nth-child(n + 4) {
+  .bulk-table thead th:nth-child(n + 3) {
     display: none;
   }
   .bulk-table tbody tr {
-    grid-template-columns: 1.95rem minmax(0, 1fr) minmax(0, 1.35fr) 3.65rem;
+    grid-template-columns:
+      var(--bulk-mark-width, 0px) minmax(0, 1fr) minmax(0, 1.35fr) 3.65rem;
   }
-  .bulk-table tbody th {
-    grid-column: 2 / 4;
+  .bulk-table .bulk-mark {
+    grid-column: 1;
   }
-  .bulk-table tbody td:nth-child(3) {
-    grid-column: 4;
-    justify-self: end;
+  .bulk-table .bulk-boss {
+    grid-column: 2 / -1;
   }
-  .bulk-table tbody td:nth-child(4) {
+  .bulk-table td[data-label="난이도"] {
     grid-column: 2;
   }
-  .bulk-table tbody td:nth-child(5) {
+  .bulk-table td[data-label="파티"] {
     grid-column: 3;
   }
-  .bulk-table tbody td:nth-child(6) {
+  .bulk-table td[data-label="인원"] {
     grid-column: 4;
   }
   .bulk-table tbody td:only-child {

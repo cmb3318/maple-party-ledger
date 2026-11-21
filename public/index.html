@@ -283,45 +283,49 @@
             </select></label
           >
           <button id="bulkNewSquad" type="button">+ 새 파티</button>
+          <button
+            id="toggleBulkSelection"
+            type="button"
+            aria-expanded="false"
+            aria-controls="bulkControls"
+          >일괄 선택</button>
         </div>
-        <div class="bulk-controls">
+        <div class="bulk-controls" id="bulkControls" hidden>
           <div class="bulk-selection">
             <strong id="bulkMarked" aria-live="polite"></strong>
-            <button id="markIncluded" type="button">가는 보스 체크</button>
-            <button id="clearMarks" type="button">체크 해제</button>
+            <button id="markIncluded" type="button">등록된 보스 선택</button>
+            <button id="clearMarks" type="button">선택 해제</button>
           </div>
           <div class="bulk-fields">
             <label
               >난이도<select id="massLevel">
                 <option value="">유지</option>
-                <option>이지</option>
-                <option>노멀</option>
-                <option>하드</option>
-                <option>카오스</option>
-                <option>익스트림</option>
+                <option data-level="이지">이지</option>
+                <option data-level="노멀">노멀</option>
+                <option data-level="하드">하드</option>
+                <option data-level="카오스">카오스</option>
+                <option data-level="익스트림">익스트림</option>
               </select></label
             >
             <label>파티<select id="massSquad"></select></label>
             <label>인원<select id="massSize"></select></label>
-            <button id="applyMass" type="button">체크한 보스에 적용</button>
-            <button id="excludeMass" type="button">체크한 보스 빼기</button>
+            <button id="applyMass" type="button">선택한 보스에 적용</button>
+            <button id="excludeMass" type="button">선택한 보스 등록 해제</button>
           </div>
-          <p class="muted" id="bulkMessage" role="status"></p>
         </div>
         <div class="bulk-workspace">
           <div class="bulk-scroll" tabindex="0" aria-label="보스 설정 목록">
             <table class="bulk-table">
               <thead>
                 <tr>
-                  <th scope="col">
+                  <th scope="col" class="bulk-mark">
                     <input
                       type="checkbox"
                       id="markAll"
-                      aria-label="표에 보이는 보스 전부 체크"
+                      aria-label="표에 보이는 보스 전부 일괄 선택"
                     />
                   </th>
-                  <th scope="col">보스</th>
-                  <th scope="col">가기</th>
+                  <th scope="col" class="bulk-boss">보스 등록</th>
                   <th scope="col">난이도</th>
                   <th scope="col">파티</th>
                   <th scope="col">인원</th>
@@ -340,7 +344,7 @@
                     <option value="merge">
                       가는 보스 추가 · 기존 목록 유지
                     </option>
-                    <option value="marked">체크한 보스만 맞추기</option>
+                    <option value="marked">선택한 보스만 맞추기</option>
                     <option value="replace">보스 목록 전체 맞추기</option>
                   </select></label
                 >
@@ -357,6 +361,7 @@
           </details>
         </div>
         <div class="bulk-footer">
+          <p class="muted" id="bulkMessage" role="status"></p>
           <span id="bulkTotals" class="muted" aria-live="polite"></span>
           <div class="actions">
             <button id="saveNext" type="button">저장 후 다음 캐릭터</button>
