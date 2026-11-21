@@ -1,6 +1,8 @@
 import { setupBulk } from "./bulk.js";
 import { setupBoardMotion } from "./board-motion.js";
 import { setupRaidSelection } from "./raid-selection.js";
+import { setupPartyOrder } from "./party-order.js";
+import { bossIcon, portrait } from "./raid-images.js";
 import { labelComplete, setupRecords } from "./records.js";
 import {
   bosses,
@@ -9,7 +11,6 @@ import {
   plannedRaids,
   raidFor,
   totals,
-  safeImage,
   storageKey,
   readState,
   validName,
@@ -52,6 +53,15 @@ const soloKey = "solo";
 const folded = new Set([soloKey]);
 const boardCards = new Map();
 const board = $("board");
+const partyOrder = setupPartyOrder(board, (id, targetId) => {
+  update((fresh) => {
+    const from = fresh.squads.findIndex((squad) => squad.id === id);
+    const to = fresh.squads.findIndex((squad) => squad.id === targetId);
+    if (from < 0 || to < 0 || from === to) return;
+    const [squad] = fresh.squads.splice(from, 1);
+    fresh.squads.splice(to, 0, squad);
+  });
+});
 const boardRows = new WeakMap();
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const boardMotion = setupBoardMotion(board);
@@ -180,25 +190,6 @@ function openCharacter(name = "") {
   $("lookupMsg").textContent = "";
   $("characterDialog").showModal();
 }
-function portrait(character) {
-  const image = el("img", "", "portrait");
-  const source = safeImage(character.profile?.image);
-  image.alt = "";
-  image.src = source || "/leaf.png";
-  image.classList.toggle("fallback", !source);
-  image.onerror = () => {
-    image.onerror = null;
-    image.src = "/leaf.png";
-    image.classList.add("fallback");
-  };
-  return image;
-}
-function bossIcon(boss) {
-  const image = el("img", "", "emblem");
-  image.alt = "";
-  image.src = "/badges/" + boss.id + ".png";
-  return image;
-}
 function difficultyTag(level) {
   const tag = el("span", level, "difficulty");
   tag.dataset.level = level;
@@ -259,8 +250,10 @@ function raidRow(raid, grouping, now) {
   paintParty(line, squad);
   line.dataset.raid = key;
   const identity = el("span", "", "raid-identity");
-  if (grouping !== "bosses") identity.append(bossIcon(boss));
-  identity.append(name);
+  identity.append(
+    grouping === "bosses" ? portrait(character) : bossIcon(boss),
+    name,
+  );
   const controls = el("div", "", "raid-controls");
   function select(field, label, choices, selected, change) {
     const control = el("select", "", "quick-" + field);
@@ -499,7 +492,7 @@ function bossGroup(boss, raids, now) {
   raids.forEach((raid) => body.append(raidRow(raid, "bosses", now)));
   return group;
 }
-function squadGroup(squad, label, raids, now) {
+function squadGroup(squad, label, raids, now, sortable = false) {
   const solo = !squad && label === "솔로";
   const group = el(
     solo ? "section" : "article",
@@ -524,6 +517,16 @@ function squadGroup(squad, label, raids, now) {
     const edit = button("파티 편집", () => openSquad(squad));
     edit.setAttribute("aria-label", squad.name + " 편집");
     controls.append(edit);
+  }
+  if (sortable) {
+    group.dataset.squadId = squad.id;
+    const grip = el("button", "", "party-grip");
+    grip.type = "button";
+    grip.title = "드래그 또는 방향키로 순서 바꾸기";
+    grip.setAttribute("aria-label", squad.name + " 순서 바꾸기");
+    grip.setAttribute("aria-description", grip.title);
+    grip.dataset.focus = "order-" + squad.id;
+    controls.append(grip);
   }
   const body = collapsible(group, {
     key,
@@ -563,6 +566,7 @@ function squadGroup(squad, label, raids, now) {
   return group;
 }
 function render({ animateVisibility = false, justCleared = false } = {}) {
+  partyOrder.reset();
   selection.reset();
   const previous = boardMotion.capture(
     animateVisibility && interaction === "check" && !reduceMotion.matches,
@@ -657,14 +661,21 @@ function render({ animateVisibility = false, justCleared = false } = {}) {
     }
   } else if (mode === "squads") {
     const parties = el("div", "", "group-grid");
-    for (const squad of state.squads) {
-      const list = visible.filter((raid) => raid.squad === squad);
-      if (
-        list.length ||
-        !filtering ||
-        (!hideDone && !terms.length && partyFilter === squad.id)
-      )
-        parties.append(squadGroup(squad, squad.name, list, now));
+    const shownSquads = state.squads
+      .map((squad) => ({
+        squad,
+        list: visible.filter((raid) => raid.squad === squad),
+      }))
+      .filter(
+        ({ squad, list }) =>
+          list.length ||
+          !filtering ||
+          (!hideDone && !terms.length && partyFilter === squad.id),
+      );
+    for (const { squad, list } of shownSquads) {
+      parties.append(
+        squadGroup(squad, squad.name, list, now, shownSquads.length > 1),
+      );
     }
     const unassigned = visible.filter((raid) => !raid.squad && raid.size > 1);
     if (unassigned.length)
@@ -1015,8 +1026,12 @@ function renderPrices() {
   for (const boss of bosses) {
     for (const level of boss.levels) {
       const row = body.insertRow();
-      row.insertCell().textContent =
-        boss.name + (boss.cycle === "monthly" ? " (월간)" : "");
+      const name = el("span", "", "price-boss");
+      name.append(
+        bossIcon(boss),
+        boss.name + (boss.cycle === "monthly" ? " (월간)" : ""),
+      );
+      row.insertCell().append(name);
       row.insertCell().textContent = level;
       for (let size = 1; size <= 6; size++) {
         row.insertCell().textContent =

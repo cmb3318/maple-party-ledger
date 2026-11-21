@@ -6,6 +6,8 @@
 
 **캐릭터 추가**에서 닉네임을 조회하면 이미지와 월드·직업·레벨을 가져옵니다. 조회를 이용할 수 없다면 이름으로 등록하고 나중에 같은 닉네임을 다시 조회할 수 있습니다.
 
+캐릭터 얼굴은 넥슨 Open API가 제공하는 대기 자세의 첫 프레임에서 32×32픽셀로 표시합니다. 파티별 보기에서 제목 옆의 점 손잡이를 다른 파티 카드로 끌거나, 손잡이에 초점을 두고 방향키를 누르면 파티 순서가 브라우저에 저장됩니다.
+
 **보스 일괄 편집**에서 갈 보스를 고르고 표에서 난이도·파티·인원을 바로 바꿀 수 있습니다. 같은 설정을 여러 보스에 적용하려면 왼쪽에 있는 일괄 체크 칸을 선택하고 위쪽에서 설정을 적용하세요. 지원하지 않는 난이도는 유지하고, 인원은 각 보스의 입장 한도까지만 적용합니다. **다른 캐릭터에도 복사**에서 여러 캐릭터를 골라 목록을 합치거나, 체크한 행만 맞추거나, 전체 목록을 맞출 수 있습니다. 복사 대상의 메모와 격파 기록은 유지됩니다. 캐릭터마다 구성이 다르면 **저장 후 다음 캐릭터**로 이어서 편집할 수 있습니다.
 
 **파티별 보기**는 같은 파티에서 여러 보스를 도는 캐릭터를 한 번만 표시하고 해당 캐릭터 아래에 보스 목록과 격파 진행률을 보여 줍니다. 솔로 보스는 맨 아래 별도 섹션에 캐릭터별로 모이며 기본값은 접힘입니다. **보스별 보기**에는 보스마다 가는 캐릭터와 파티가 표시됩니다. 어느 보기에서 격파를 체크하든 하나의 기록에 반영됩니다.
@@ -58,4 +60,4 @@ KMS용 넥슨 앱 키를 Pages 프로젝트의 **Settings → Variables and Secr
 - [보스 파티 모집 대상 및 난이도](https://maplestory.nexon.com/News/Update/816), [주간 초기화](https://maplestory.nexon.com/News/Update/790), [검은 마법사 월간 초기화](https://gi.maplestory.nexon.com/Guide/GameInformation/Boss/BlackMagician)
 - [Cloudflare Pages 암호화된 Secret](https://developers.cloudflare.com/pages/functions/bindings/#secrets) 및 [직접 배포](https://developers.cloudflare.com/pages/get-started/direct-upload/)
 
-Data based on NEXON Open API. 게임 데이터의 권리는 각 권리자에게 있습니다. 풍경과 목록의 표식은 이 앱을 위해 만든 픽셀 일러스트입니다.
+Data based on NEXON Open API. 게임 데이터의 권리는 각 권리자에게 있습니다. 보스 아이콘은 [메이플툴즈 주간보스 수익 계산기](https://dae-y.github.io/maple_tools/boss-income-calculator.html)에 게시된 이미지를 연결해 표시합니다. 풍경과 대체 표식은 이 앱을 위해 만든 픽셀 일러스트입니다.

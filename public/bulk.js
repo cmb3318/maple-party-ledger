@@ -1,6 +1,7 @@
 import { bosses, raidFor, saveBossPlan } from "./model.js";
 import { maxPlayers, share } from "./crystals.js";
 import { paintParty } from "./party-colors.js";
+import { bossIcon } from "./raid-images.js";
 
 const byId = (id) => document.getElementById(id);
 
@@ -111,7 +112,7 @@ export function setupBulk({ getState, update, openSquad, meso, notify }) {
     tr.insertCell().append(mark);
     const name = document.createElement("th");
     name.scope = "row";
-    name.textContent = bossName;
+    name.append(bossIcon(row.boss), bossName);
     if (row.boss.cycle === "monthly") {
       const label = document.createElement("small");
       label.textContent = "월간";

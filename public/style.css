@@ -484,14 +484,35 @@ dialog,
   overflow: clip;
 }
 .portrait {
-  width: 2.75rem;
-  height: 2.75rem;
-  object-fit: cover;
+  position: relative;
+  display: block;
+  width: 32px;
+  height: 32px;
   flex: none;
+  overflow: hidden;
   background: #282b40;
 }
-.portrait.fallback {
-  padding: 0.62rem;
+.portrait img {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  max-width: none;
+  transform: translate(-48.6667%, -52.3333%);
+}
+.stand-portrait img {
+  /* 300 × 300 API frame. Keep the eyes and chin in a 32 × 32 window. */
+  width: 300px;
+  height: 300px;
+  left: -130px;
+  top: -141px;
+  transform: none;
+}
+.portrait.fallback img {
+  width: 18px;
+  height: 18px;
+  left: 7px;
+  top: 7px;
+  transform: none;
 }
 .card-controls {
   flex: none;
@@ -508,6 +529,36 @@ dialog,
 }
 .card-head > :is(.card-controls, .scope-complete) {
   margin-inline-end: 0.5rem;
+}
+.party-grip {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  touch-action: none;
+  cursor: grab;
+  color: var(--team-ink, var(--muted));
+}
+.party-grip::before {
+  content: "";
+  width: 9px;
+  height: 15px;
+  background: radial-gradient(circle, currentColor 1px, transparent 1.6px) 0 0 /
+    4.5px 5px;
+}
+.party-order-source .card-head {
+  opacity: 0.6;
+}
+.party-order-source .party-grip {
+  cursor: grabbing;
+  transform: none;
+}
+[data-order-drop] > .card-head {
+  box-shadow: inset 0 2px var(--mint);
+  background: color-mix(in srgb, var(--mint) 11%, transparent);
+}
+[data-order-drop="after"] > .card-head {
+  box-shadow: inset 0 -2px var(--mint);
 }
 .scope-complete,
 #completeShown,
@@ -555,7 +606,22 @@ dialog,
 .emblem {
   width: 1.7rem;
   height: 1.7rem;
+  object-fit: contain;
   flex: none;
+}
+.price-boss {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+.price-boss .emblem,
+.bulk-table tbody th .emblem {
+  width: 1.22rem;
+  height: 1.22rem;
+  vertical-align: middle;
+}
+.bulk-table tbody th .emblem {
+  margin-inline-end: 0.28rem;
 }
 .raid-row {
   position: relative;
@@ -1551,16 +1617,6 @@ button.record-row[aria-pressed="true"] {
     color-mix(in srgb, var(--party, var(--accent)) 20%, var(--panel-2)),
     var(--panel-2) 78%
   );
-}
-.squad-character-head .portrait,
-.check-identity .portrait {
-  width: 1.6rem;
-  height: 1.6rem;
-  background: transparent;
-}
-.squad-character-head .portrait.fallback,
-.check-identity .portrait.fallback {
-  padding: 0.17rem;
 }
 .squad-progress {
   margin-left: auto;
