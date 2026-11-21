@@ -520,15 +520,15 @@ dialog,
   align-items: center;
 }
 .card-controls button,
-.card-head > .scope-complete,
+.card-head > .card-progress,
 .more summary {
   padding: 0.28rem 0.42rem;
   font-size: 0.75rem;
 }
-.card-head > :is(.card-controls, .scope-complete) {
+.card-head > :is(.card-controls, .card-progress) {
   margin-inline-end: 0.5rem;
 }
-.party-grip {
+.card-grip {
   display: grid;
   place-items: center;
   width: 2.1rem;
@@ -537,19 +537,19 @@ dialog,
   cursor: grab;
   color: var(--team-ink, var(--muted));
 }
-.party-grip::before {
+.card-grip::before {
   content: "";
   width: 9px;
   height: 15px;
   background: radial-gradient(circle, currentColor 1px, transparent 1.6px) 0 0 /
     4.5px 5px;
 }
-.party-order-active {
+.card-order-active {
   position: relative;
   overflow-anchor: none;
   cursor: grabbing;
 }
-.party-order-slot {
+.card-order-slot {
   min-width: 0;
   padding: 0.65rem;
   outline: 1px dashed #76e0ba8c;
@@ -558,10 +558,10 @@ dialog,
   color: var(--mint);
   font-size: 0.82rem;
 }
-.party-order-outside {
+.card-order-outside {
   opacity: 0.45;
 }
-.party-order-ghost {
+.card-order-ghost {
   position: fixed;
   inset: 0 auto auto 0;
   z-index: 12;
@@ -581,15 +581,31 @@ dialog,
   font-weight: 650;
   overflow-wrap: anywhere;
 }
-.party-order-ghost small {
+.card-order-ghost small {
   display: block;
   color: var(--mint);
   font-size: 0.72rem;
 }
-.scope-complete,
-#completeShown,
-#quickComplete {
+.card-progress {
+  color: var(--muted);
+  background: var(--well);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.card.scope-cleared
+  > .card-head
+  .card-toggle
+  :is(.card-subtitle, .card-chevron, .portrait, .emblem),
+.card.scope-cleared > .card-head > :is(.card-progress, .card-controls),
+.card.scope-cleared > .card-content > :not(.mini-total, .squad-roster),
+.squad-character.scope-cleared > .squad-character-head > :not(h3),
+.squad-character.scope-cleared > .raid-row {
+  opacity: 0.5;
+}
+.scope-cleared > .card-head .card-controls:is(:hover, :focus-within),
+.scope-cleared > .card-content > .raid-row:is(:hover, :focus-visible),
+.squad-character.scope-cleared > .raid-row:is(:hover, :focus-visible) {
+  opacity: 1;
 }
 .more {
   position: relative;
@@ -1611,14 +1627,12 @@ button.record-row[aria-pressed="true"] {
   --mode-color: var(--violet);
 }
 #completeShown,
-#quickComplete,
-.scope-complete {
+#quickComplete {
   color: #b9f0d9;
   background: #253d3a;
 }
 #completeShown:hover:not(:disabled),
-#quickComplete:hover:not(:disabled),
-.scope-complete:hover:not(:disabled) {
+#quickComplete:hover:not(:disabled) {
   background: #35564d;
 }
 .squad-character + .squad-character {

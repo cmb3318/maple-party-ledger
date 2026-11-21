@@ -4,19 +4,6 @@ import { fetchSchedulerChanges, schedulerError } from "./scheduler.js";
 
 const $ = (id) => document.getElementById(id);
 const raidKey = (raid) => raid.character.name + "-" + raid.boss.id;
-export function labelComplete(control, raids, scope, prefix = "") {
-  const count = raids.length;
-  const cleared = raids.filter((raid) => raid.done).length;
-  const remaining = count - cleared;
-  control.textContent = prefix + cleared + "/" + count;
-  control.disabled = remaining === 0;
-  const status = scope + " " + count + "개 중 " + cleared + "개 격파";
-  control.setAttribute(
-    "aria-label",
-    remaining ? status + " · 남은 " + remaining + "개 모두 완료" : status,
-  );
-  control.title = remaining ? "남은 보스 모두 완료" : status;
-}
 const time = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul",
   month: "numeric",
@@ -220,8 +207,7 @@ export function setupRecords({
       ? raids.filter((raid) => raid.character.name === characterName)
       : raids;
     const done = scoped.filter((raid) => raid.done).length;
-    $("quickProgress").textContent =
-      mode === "done" ? done + "/" + scoped.length : "";
+    $("quickProgress").textContent = done + "/" + scoped.length;
     $("quickOpen").setAttribute("aria-pressed", mode === "open");
     $("quickDone").setAttribute("aria-pressed", mode === "done");
     const list = $("quickList");
@@ -244,7 +230,7 @@ export function setupRecords({
     }
     const completeShown = $("quickComplete");
     completeShown.hidden = mode === "done";
-    labelComplete(completeShown, scoped, "선택한 캐릭터 보스");
+    completeShown.disabled = done === scoped.length;
     completeShown.onclick = () => complete(rows, now);
     for (const raid of rows) list.append(makeQuickRow(raid, now));
     if (focus) {

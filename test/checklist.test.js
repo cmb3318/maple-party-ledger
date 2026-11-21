@@ -4,6 +4,9 @@ import {
   period,
   newParty,
   bosses,
+  bossViewOrder,
+  reorderCard,
+  undoCardOrder,
   isCleared,
   readState,
   safeImage,
@@ -74,6 +77,53 @@ test("saved legacy records stay readable and only qualifying bosses enter the pl
       boss.levels.every((level) => share(boss, level, 1) >= minimumPrice),
     ),
   );
+});
+test("card ordering survives storage and keeps boss view order separate from character plans", () => {
+  const first = newParty("첫캐릭터");
+  const second = newParty("둘캐릭터");
+  first.targets.push("lotus", "will");
+  const state = {
+    version: 1,
+    active: first.name,
+    parties: [first, second],
+    squads: [{ id: "one" }, { id: "two" }],
+    bossOrder: ["retired-boss", "will", "will"],
+  };
+  const bossChange = reorderCard(state, "bosses", "lotus", "will");
+  const characterChange = reorderCard(
+    state,
+    "characters",
+    second.name,
+    first.name,
+  );
+  const partyChange = reorderCard(state, "squads", "one", "two");
+  const restored = readState(JSON.stringify(state));
+  assert.deepEqual(
+    bossViewOrder(restored)
+      .slice(0, 2)
+      .map((boss) => boss.id),
+    ["lotus", "will"],
+  );
+  assert.equal(bossViewOrder(restored).length, bosses.length);
+  assert.deepEqual(
+    restored.parties.map((character) => character.name),
+    [second.name, first.name],
+  );
+  assert.deepEqual(
+    restored.squads.map((squad) => squad.id),
+    ["two", "one"],
+  );
+  assert.equal(restored.active, first.name);
+  assert.deepEqual(
+    plannedRaids(restored).map((raid) => raid.boss.id),
+    ["lotus", "will"],
+  );
+  assert.ok(undoCardOrder(restored, "bosses", bossChange));
+  assert.ok(undoCardOrder(restored, "characters", characterChange));
+  assert.ok(undoCardOrder(restored, "squads", partyChange));
+  assert.equal(bossViewOrder(restored)[0].id, "will");
+  assert.equal(restored.parties[0].name, first.name);
+  assert.equal(restored.squads[0].id, "one");
 });
 test("planned shares respect the difficulty's entry cap and separate monthly and completed income", () => {
   const now = at("2026-11-20T00:00:00Z");

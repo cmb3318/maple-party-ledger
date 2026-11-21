@@ -32,6 +32,53 @@ export function newParty(name) {
     clears: {},
   };
 }
+
+const bossesById = new Map(bosses.map((boss) => [boss.id, boss]));
+export function bossViewOrder(state) {
+  const saved = Array.isArray(state.bossOrder) ? state.bossOrder : [];
+  return [...new Set([...saved, ...bossesById.keys()])]
+    .map((id) => bossesById.get(id))
+    .filter(Boolean);
+}
+
+const cardCollections = { characters: "parties", squads: "squads" };
+const cardId = (item, view) => (view === "characters" ? item.name : item.id);
+function orderItems(state, view) {
+  return view === "bosses"
+    ? bossViewOrder(state)
+    : state[cardCollections[view]];
+}
+function writeCardOrder(state, view, items) {
+  if (view === "bosses") state.bossOrder = items.map((boss) => boss.id);
+  else state[cardCollections[view]] = items;
+}
+export function reorderCard(state, view, id, targetId) {
+  const items = orderItems(state, view);
+  const before = items.map((item) => cardId(item, view));
+  const from = before.indexOf(id);
+  const to = before.indexOf(targetId);
+  if (from < 0 || to < 0 || from === to) return null;
+  const next = [...items];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  writeCardOrder(state, view, next);
+  return { before, after: next.map((item) => cardId(item, view)) };
+}
+export function undoCardOrder(state, view, { before, after }) {
+  const items = orderItems(state, view);
+  if (
+    items.length !== after.length ||
+    !items.every((item, index) => cardId(item, view) === after[index])
+  )
+    return false;
+  const byId = new Map(items.map((item) => [cardId(item, view), item]));
+  writeCardOrder(
+    state,
+    view,
+    before.map((id) => byId.get(id)),
+  );
+  return true;
+}
 export function isCleared(party, boss, now) {
   return party.clears[boss.id] === period(boss.cycle, now).key;
 }

@@ -1,12 +1,12 @@
-export function setupPartyOrder(board, move) {
-  const cards = () => [...board.querySelectorAll("[data-squad-id]")];
+export function setupCardOrder(board, move) {
+  const cards = () => [...board.querySelectorAll("[data-order-id]")];
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const motions = new WeakMap();
   let drag;
 
   function measure(group) {
     return new Map(
-      group.map((card) => [card.dataset.squadId, card.getBoundingClientRect()]),
+      group.map((card) => [card.dataset.cardKey, card.getBoundingClientRect()]),
     );
   }
 
@@ -14,7 +14,7 @@ export function setupPartyOrder(board, move) {
     group.forEach((card) => motions.get(card)?.cancel());
     if (reducedMotion.matches) return;
     for (const card of group) {
-      const past = before.get(card.dataset.squadId);
+      const past = before.get(card.dataset.cardKey);
       if (!past) continue;
       const rect = card.getBoundingClientRect();
       const x = past.left - rect.left;
@@ -82,7 +82,7 @@ export function setupPartyOrder(board, move) {
       active.index = index;
     }
     active.canDrop = hit >= 0;
-    slot.classList.toggle("party-order-outside", !active.canDrop);
+    slot.classList.toggle("card-order-outside", !active.canDrop);
     slotLabel.textContent = index + 1 + "번째 자리";
     ghostLabel.textContent = active.canDrop
       ? slotLabel.textContent
@@ -122,16 +122,16 @@ export function setupPartyOrder(board, move) {
     const name = card.querySelector(".card-name").textContent;
     const slot = document.createElement("div");
     const slotLabel = document.createElement("strong");
-    slot.className = "party-order-slot";
+    slot.className = "card-order-slot";
     slot.setAttribute("aria-hidden", "true");
     slot.style.height = card.getBoundingClientRect().height + "px";
     slot.append(slotLabel);
     card.before(slot);
     card.hidden = true;
-    grid.classList.add("party-order-active");
+    grid.classList.add("card-order-active");
     const ghost = document.createElement("div");
     const ghostLabel = document.createElement("small");
-    ghost.className = "party-order-ghost";
+    ghost.className = "card-order-ghost";
     ghost.setAttribute("aria-hidden", "true");
     ghost.style.setProperty(
       "--grab-color",
@@ -144,7 +144,7 @@ export function setupPartyOrder(board, move) {
   }
 
   function save(card, target, before) {
-    move(card.dataset.squadId, target.dataset.squadId).then(() => {
+    move(card.dataset.orderId, target.dataset.orderId).then(() => {
       if (!drag) glide(before, cards());
     });
   }
@@ -164,7 +164,7 @@ export function setupPartyOrder(board, move) {
     else slot.remove();
     card.hidden = false;
     ghost.remove();
-    grid.classList.remove("party-order-active");
+    grid.classList.remove("card-order-active");
     if (animate) {
       handle.focus({ preventScroll: true });
       glide(before, group);
@@ -173,10 +173,10 @@ export function setupPartyOrder(board, move) {
   }
 
   board.addEventListener("pointerdown", (event) => {
-    const handle = event.target.closest(".party-grip");
+    const handle = event.target.closest(".card-grip");
     if (!handle || event.button !== 0 || !event.isPrimary) return;
     finish();
-    const card = handle.closest("[data-squad-id]");
+    const card = handle.closest("[data-order-id]");
     const group = cards();
     const origin = group.indexOf(card);
     event.preventDefault();
@@ -218,7 +218,7 @@ export function setupPartyOrder(board, move) {
     if (drag?.id === event.pointerId) finish();
   });
   board.addEventListener("keydown", (event) => {
-    const handle = event.target.closest(".party-grip");
+    const handle = event.target.closest(".card-grip");
     if (!handle) return;
     const direction = {
       ArrowUp: -1,
@@ -228,7 +228,7 @@ export function setupPartyOrder(board, move) {
     }[event.key];
     if (!direction) return;
     event.preventDefault();
-    const card = handle.closest("[data-squad-id]");
+    const card = handle.closest("[data-order-id]");
     const group = cards();
     const target = group[group.indexOf(card) + direction];
     if (target) save(card, target, measure(group));
