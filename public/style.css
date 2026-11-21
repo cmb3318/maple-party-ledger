@@ -662,6 +662,10 @@ dialog,
   height: 100%;
   object-fit: contain;
 }
+.emblem-lotus img {
+  outline: 1px solid #f5f2f6;
+  outline-offset: -1px;
+}
 .price-boss {
   display: inline-flex;
   align-items: center;

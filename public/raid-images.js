@@ -26,6 +26,7 @@ const bossFiles = {
 export function bossIcon(boss) {
   const frame = document.createElement("span");
   frame.className = "emblem";
+  if (boss.id === "lotus") frame.classList.add("emblem-lotus");
   const image = document.createElement("img");
   image.alt = "";
   image.decoding = "async";
