@@ -10,6 +10,7 @@
     />
     <title>메이플가계부 · 보스 파티와 결정석</title>
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/history.css" />
     <script type="module" src="/app.js"></script>
   </head>
   <body>
@@ -18,8 +19,8 @@
         <a class="brand" href="/">메이플가계부</a>
         <div class="mast-actions">
           <span id="week" class="muted week-label"></span>
-          <button id="openQuick" class="record-button" data-check-only>
-            ✓ 격파 기록
+          <button id="openHistory" class="record-button" type="button">
+            기록/분석
           </button>
         </div>
       </div>
@@ -168,6 +169,85 @@
       <span id="mobileRemaining"></span>
       <button id="mobileQuick" class="record-button">✓ 격파 기록</button>
     </div>
+    <dialog id="historyDialog" aria-labelledby="historyTitle">
+      <header class="dialog-head history-head">
+        <div>
+          <h2 id="historyTitle">기록/분석</h2>
+          <p id="historyStorage" class="muted"></p>
+        </div>
+        <div class="history-actions">
+          <button id="historyQuick" type="button">빠른 격파</button>
+          <button id="historyExport" class="primary" type="button">Excel 저장 (.xlsx)</button>
+          <button type="button" data-close>닫기</button>
+        </div>
+      </header>
+      <div id="historyBody" class="history-body">
+        <section class="history-controls" aria-label="조회 조건">
+          <div class="history-filter-row">
+            <div id="historyCycle" class="history-switch" aria-label="기록 주기">
+              <button type="button" data-value="weekly" aria-pressed="true">주간</button>
+              <button type="button" data-value="monthly" aria-pressed="false">월간</button>
+            </div>
+            <div id="historyGrouping" class="history-switch" aria-label="분석 기준">
+              <button type="button" data-value="character" aria-pressed="true">캐릭터별</button>
+              <button type="button" data-value="party" aria-pressed="false">파티별</button>
+              <button type="button" data-value="boss" aria-pressed="false">보스별</button>
+            </div>
+            <label>조회 범위
+              <select id="historyRange">
+                <option value="6">최근 6개 기간</option>
+                <option value="12">최근 12개 기간</option>
+                <option value="24">최근 24개 기간</option>
+                <option value="0">저장된 전체 기간</option>
+              </select>
+            </label>
+          </div>
+          <div class="history-filter-row history-refine">
+            <label>그룹 선택<select id="historyGroup"><option value="">전체</option></select></label>
+            <label>기록 검색<input id="historySearch" type="search" placeholder="캐릭터, 파티, 보스" autocomplete="off" /></label>
+            <label class="history-check"><input id="historyMissed" type="checkbox" /> 미격파만</label>
+            <label class="history-check"><input id="historyChanges" type="checkbox" checked /> 변동 강조</label>
+          </div>
+        </section>
+        <section class="history-overview" aria-labelledby="historyPeriodTitle">
+          <div class="history-section-head">
+            <div>
+              <h3 id="historyPeriodTitle"></h3>
+              <p id="historyPeriodStatus" class="muted" aria-live="polite"></p>
+            </div>
+            <label>자세히 볼 기간<select id="historyPeriod"></select></label>
+          </div>
+          <div id="historyStats" class="history-stats"></div>
+        </section>
+        <section class="history-series" aria-label="기간별 추이">
+          <div class="history-section-head">
+            <div id="historyDisplay" class="history-switch" aria-label="표시 방식">
+              <button type="button" data-value="cell" aria-pressed="true">셀</button>
+              <button type="button" data-value="bar" aria-pressed="false">막대</button>
+              <button type="button" data-value="line" aria-pressed="false">선</button>
+            </div>
+            <label id="historyMetricLabel" hidden>그래프 지표
+              <select id="historyMetric">
+                <option value="clears">보스 수</option>
+                <option value="meso">결정석 메소</option>
+                <option value="rate">비율</option>
+              </select>
+            </label>
+          </div>
+          <div id="historyViewport" class="history-viewport" tabindex="0" aria-label="기간별 데이터"></div>
+          <p id="historyLegend" class="muted history-legend"></p>
+          <details id="historyRangeMisses" class="history-change-panel" hidden>
+            <summary id="historyRangeMissesTitle"></summary>
+            <div id="historyRangeRanks" class="history-rankings"></div>
+          </details>
+        </section>
+        <section class="history-details" aria-labelledby="historyDetailTitle">
+          <h3 id="historyDetailTitle">선택한 기간의 상세 기록</h3>
+          <div id="historyDetail"></div>
+        </section>
+      </div>
+      <p id="historyMessage" class="history-message" role="status" hidden></p>
+    </dialog>
     <dialog id="quickDialog" aria-labelledby="quickTitle">
       <header class="dialog-head">
         <h2 id="quickTitle">격파 기록</h2>

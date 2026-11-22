@@ -4,6 +4,8 @@ import { setupRaidSelection } from "./raid-selection.js";
 import { setupCardOrder } from "./card-order.js";
 import { bossIcon, portrait } from "./raid-images.js";
 import { setupRecords } from "./records.js";
+import { captureHistory } from "./history-data.js";
+import { setupHistory } from "./history-view.js";
 import {
   bosses,
   bossViewOrder,
@@ -99,31 +101,36 @@ const dateFormat = new Intl.DateTimeFormat("ko-KR", {
   month: "numeric",
   day: "numeric",
 });
-function update(change, { checks = false } = {}) {
-  const apply = () => {
+function withLatestState(apply) {
+  const locked = () => {
     if (!temporary) {
       const fresh = load();
       if (!temporary) state = fresh;
     }
-    change(state);
-    if (!temporary) {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(state));
-      } catch {
-        temporary = true;
-        warn(
-          "브라우저에 저장할 수 없어요. 이번 창을 닫으면 변경 사항이 사라져요.",
-        );
-      }
-    }
+    return apply(Date.now());
+  };
+  return navigator.locks ? navigator.locks.request(storageKey, locked) : Promise.resolve(locked());
+}
+function saveState() {
+  if (temporary) return;
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  } catch {
+    temporary = true;
+    warn("브라우저에 저장할 수 없어요. 이번 창의 새 기록은 기록/분석에서 내보낼 수 있어요.");
+  }
+}
+function update(change, { checks = false } = {}) {
+  return withLatestState((now) => {
+    if (!state.history) captureHistory(state, now);
+    change(state, now);
+    captureHistory(state, now);
+    saveState();
     render({
       animateVisibility: checks && $("hideDone").checked,
       justCleared: checks,
     });
-  };
-  return navigator.locks
-    ? navigator.locks.request(storageKey, apply)
-    : Promise.resolve(apply());
+  });
 }
 async function changeCardOrder(view, id, targetId) {
   const label = { characters: "캐릭터", squads: "파티", bosses: "보스" }[view];
@@ -844,6 +851,7 @@ function render({
   boardMotion.play(previous, justCleared);
   scheduleReset(range, period("monthly", now));
   records.render(raids, now);
+  analytics.render(now);
   if (focus)
     document
       .querySelector('[data-focus="' + CSS.escape(focus) + '"]')
@@ -1191,11 +1199,19 @@ $("interactionModes").onclick = (event) => {
 document.querySelectorAll("[data-close]").forEach((control) => {
   control.onclick = () => control.closest("dialog").close();
 });
+let checkpoint;
+function checkpointHistory() {
+  checkpoint ??= withLatestState((now) => {
+    if (captureHistory(state, now)) saveState();
+    render();
+  }).finally(() => { checkpoint = undefined; });
+  return checkpoint;
+}
 function tick() {
   const now = Date.now();
   const weekly = period("weekly", now);
   const monthly = period("monthly", now);
-  if (lastPeriod !== weekly.key + monthly.key) render();
+  if (lastPeriod !== weekly.key + monthly.key) checkpointHistory();
   else scheduleReset(weekly, monthly);
 }
 function scheduleReset(weekly, monthly) {
@@ -1260,12 +1276,25 @@ const records = setupRecords({
   partyName,
   signalRaid,
 });
+const analytics = setupHistory({
+  getState: () => state,
+  canSave: () => !temporary,
+  openQuick: () => {
+    setInteraction("check");
+    records.open();
+  },
+  el,
+  button,
+  bossIcon,
+  difficultyTag,
+});
 $("openBulk").onclick = () => {
   $("boardStatus").textContent = "";
   bulk.open();
 };
 renderPrices();
 render();
+checkpointHistory();
 function openRecordLink() {
   if (location.hash !== "#record") return;
   setInteraction("check");

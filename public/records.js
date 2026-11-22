@@ -37,8 +37,7 @@ export function setupRecords({
     const changed = [];
     try {
       await update(
-        (state) => {
-          const now = Date.now();
+        (state, now) => {
           for (const entry of entries) {
             const receipt = recordClear(state, entry, now);
             if (receipt) changed.push(receipt);
@@ -81,8 +80,7 @@ export function setupRecords({
     let count = 0;
     try {
       await update(
-        (state) => {
-          const now = Date.now();
+        (state, now) => {
           for (const receipt of receipts) {
             if (undoClear(state, receipt, now)) {
               recentlyChecked.delete(receipt.name + "-" + receipt.bossId);
@@ -268,7 +266,6 @@ export function setupRecords({
     render(snapshot());
     $("quickList").scrollTop = 0;
   }
-  $("openQuick").onclick = open;
   $("mobileQuick").onclick = open;
   $("quickDialog").addEventListener("close", () => {
     if (location.hash === "#record")
