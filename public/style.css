@@ -819,6 +819,76 @@ footer {
   margin-top: 0.7rem;
   font-size: 0.76rem;
   color: var(--muted);
+  align-items: center;
+}
+.footer-actions,
+.utility-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.36rem;
+}
+.footer-actions button {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.footer-actions button:hover {
+  color: var(--ink);
+}
+.utility-dialog {
+  width: min(37rem, calc(100% - 1.25rem));
+  max-width: none;
+  overflow-wrap: anywhere;
+}
+.utility-dialog section {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.52rem;
+  padding: 0.58rem;
+  background: var(--well);
+  font-size: 0.82rem;
+}
+.utility-dialog section h3 {
+  color: #e2d7ff;
+  font-family: var(--font-title);
+  font-size: 0.99rem;
+}
+.utility-dialog section ul {
+  margin: 0;
+  padding-inline-start: 1.15rem;
+}
+.utility-dialog section button {
+  justify-self: start;
+}
+.utility-dialog input[type="file"]::file-selector-button {
+  background: var(--surface);
+  color: var(--ink);
+  border: 0;
+  padding: 0.32rem;
+  margin-inline-end: 0.4rem;
+  cursor: pointer;
+}
+.settings-preview {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.45rem;
+  background: #2a263c;
+}
+.utility-dialog .settings-keep {
+  display: flex;
+  align-items: center;
+}
+.utility-status {
+  margin-top: 0.48rem;
+  color: var(--mint);
+  font-size: 0.79rem;
+}
+.utility-status[data-error="true"] {
+  color: var(--amber);
+}
+@media (max-width: 650px) {
+  .utility-dialog .dialog-head {
+    align-items: start;
+  }
 }
 dialog {
   max-height: 88dvh;

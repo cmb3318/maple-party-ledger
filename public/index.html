@@ -125,17 +125,69 @@
       <div id="board"></div>
       <p class="notice" id="warning" role="alert" hidden></p>
       <footer>
-        <span>목요일 00:00 주간 초기화 · 매월 1일 00:00 월간 초기화 (KST)</span>
-        <span>Data based on NEXON Open API</span>
-        <a
-          href="https://github.com/MapleYoil/MapleDay/tree/efe8ecfb6c8ec51d0187d29adeb2a14df4ed0836/src/MapleDay/Assets/Scheduler/Bosses"
-          >보스 아이콘 출처</a
-        >
-        <a href="https://maplestory.nexon.com/Media/Font"
-          >메이플스토리체 © ㈜넥슨코리아</a
-        >
+        <span>메이플가계부 · Data based on NEXON Open API</span>
+        <div class="footer-actions">
+          <button id="openSettingsTransfer" type="button" aria-haspopup="dialog">설정 내보내기·불러오기</button>
+          <button id="openSiteInfo" type="button" aria-haspopup="dialog">사이트 안내 · 개인정보처리방침</button>
+        </div>
       </footer>
     </main>
+    <dialog id="siteInfoDialog" class="utility-dialog" aria-labelledby="siteInfoTitle">
+      <header class="dialog-head">
+        <h2 id="siteInfoTitle">사이트 안내</h2>
+        <button type="button" data-close>닫기</button>
+      </header>
+      <section>
+        <h3>서비스와 권리</h3>
+        <p>메이플가계부는 메이플스토리의 보스 배정과 결정석 수입을 관리하는 비공식 팬 도구예요. 게임 데이터와 이미지의 권리는 각 권리자에게 있어요.</p>
+        <ul>
+          <li><a href="https://openapi.nexon.com/ko/game/maplestory/">NEXON Open API</a> 캐릭터 정보와 이미지</li>
+          <li><a href="https://github.com/MapleYoil/MapleDay/tree/efe8ecfb6c8ec51d0187d29adeb2a14df4ed0836/src/MapleDay/Assets/Scheduler/Bosses">메요일 GitHub</a>에 공개된 메이플스토리 인게임 보스 아이콘</li>
+          <li><a href="https://maplestory.nexon.com/Media/Font">메이플스토리체</a> © ㈜넥슨코리아</li>
+        </ul>
+      </section>
+      <section>
+        <h3>개인정보처리방침</h3>
+        <p>캐릭터 정보, 파티·보스 설정과 메모, 격파 및 분석 기록은 이 사이트에 접속한 브라우저에 저장돼요. 사이트 자체의 회원가입, 광고 추적 및 서버 동기화 기능은 없어요. 브라우저에서 사이트 데이터를 지우면 저장 기록도 지워져요.</p>
+        <p>캐릭터 조회를 요청하면 입력한 닉네임을 넥슨 API에 전달하고, 조회된 공개 정보는 Cloudflare에서 최대 5분간 캐시해요. 조회 한도를 적용하는 데 접속 IP를 사용해요. 스케줄러 실험실에 입력한 개인 API 키는 브라우저가 넥슨으로 직접 보내며 메이플가계부에 저장하지 않아요.</p>
+        <p>사이트 접속에는 Cloudflare, 캐릭터 이미지와 보스 아이콘 표시에는 넥슨과 GitHub에 대한 요청이 발생할 수 있어요. 설정 파일은 브라우저에서만 읽고 만들어요.</p>
+        <div class="utility-links">
+          <a href="https://member.nexon.com/policy/privacy.aspx">넥슨 개인정보처리방침</a>
+          <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare 개인정보 정책</a>
+          <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub 개인정보 정책</a>
+        </div>
+      </section>
+      <section>
+        <h3>초기화와 문의</h3>
+        <p>한국 시간 목요일 00:00에 주간 격파, 매월 1일 00:00에 월간 격파가 초기화돼요. 결정석 수입은 격파 체크와 인원수에 따라 계산해요.</p>
+        <p>오류나 권리 관련 문의는 <a href="https://github.com/cmb3318/maple-party-ledger">메이플가계부 GitHub 저장소</a>를 이용해 주세요.</p>
+      </section>
+    </dialog>
+    <dialog id="settingsTransferDialog" class="utility-dialog" aria-labelledby="settingsTransferTitle">
+      <header class="dialog-head">
+        <h2 id="settingsTransferTitle">설정 내보내기·불러오기</h2>
+        <button type="button" data-close>닫기</button>
+      </header>
+      <section>
+        <h3>내보내기</h3>
+        <p>캐릭터 목록, 파티 이름·인원·색, 등록한 보스의 난이도·배정·인원, 메모와 보스 보기 순서를 JSON 파일로 저장해요. 격파 기록과 주·월간 분석은 별도로 관리돼요.</p>
+        <button id="exportSettings" type="button">설정 파일 저장 (.json)</button>
+      </section>
+      <section>
+        <h3>불러오기</h3>
+        <p>같은 이름의 캐릭터와 파티는 설정을 갱신하고, 새 항목은 목록에 추가해요. 이 브라우저의 격파 기록은 유지돼요.</p>
+        <label>설정 파일 선택<input id="settingsFile" type="file" accept=".json,application/json" /></label>
+        <div id="settingsPreview" class="settings-preview" hidden>
+          <p id="settingsSummary" aria-live="polite"></p>
+          <label class="settings-keep">
+            <input id="keepSettingsTargets" type="checkbox" checked />
+            파일에 없는 기존 등록 보스도 유지
+          </label>
+          <button id="applySettings" class="primary" type="button">설정 적용</button>
+        </div>
+      </section>
+      <p id="settingsStatus" class="utility-status" role="status" hidden></p>
+    </dialog>
     <div
       id="raidSelection"
       class="raid-selection"

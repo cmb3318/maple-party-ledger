@@ -2,6 +2,7 @@ import {
   groupFor, historyAnalysis, historyPeriods, historyStatus, historyTotals,
 } from "./history-data.js";
 import { historyChart } from "./history-chart.js";
+import { downloadFile } from "./download.js";
 
 const $ = (id) => document.getElementById(id);
 const date = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric" });
@@ -341,15 +342,9 @@ export function setupHistory({ getState, canSave, openQuick, el, button, bossIco
     try {
       const { historyWorkbook } = await import("./history-xlsx.js");
       const blob = historyWorkbook(selection.byPeriod, selection);
-      const url = URL.createObjectURL(blob);
-      const link = el("a");
-      link.href = url;
-      link.download = "메이플가계부-" + (selection.cycle === "weekly" ? "주간" : "월간") +
+      const filename = "메이플가계부-" + (selection.cycle === "weekly" ? "주간" : "월간") +
         "-" + selection.byPeriod.at(-1).key + ".xlsx";
-      document.body.append(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      downloadFile(blob, filename);
       message("Excel 파일 다운로드를 시작했어요.");
     } catch {
       message("Excel 파일을 만들 수 없어요. 조회 범위를 줄여 다시 시도해 주세요.");

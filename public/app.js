@@ -6,6 +6,7 @@ import { bossIcon, portrait } from "./raid-images.js";
 import { setupRecords } from "./records.js";
 import { captureHistory } from "./history-data.js";
 import { setupHistory } from "./history-view.js";
+import { setupSettingsTransfer } from "./settings-transfer-view.js";
 import {
   bosses,
   bossViewOrder,
@@ -1288,6 +1289,7 @@ const analytics = setupHistory({
   bossIcon,
   difficultyTag,
 });
+setupSettingsTransfer({ getState: () => state, update, canSave: () => !temporary });
 $("openBulk").onclick = () => {
   $("boardStatus").textContent = "";
   bulk.open();
