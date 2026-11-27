@@ -885,6 +885,41 @@ footer {
 .utility-status[data-error="true"] {
   color: var(--amber);
 }
+#schedulerImportDialog {
+  width: min(46rem, calc(100% - 1.25rem));
+}
+.scheduler-import-list {
+  display: grid;
+  gap: 0.38rem;
+  max-height: 52dvh;
+  overflow: auto;
+  padding: 0.15rem;
+}
+#schedulerImportDialog .scheduler-pick {
+  display: flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.36rem 0.46rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+.scheduler-preview-character {
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  padding: 0.34rem;
+  background: var(--surface);
+}
+.scheduler-preview-boss {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(4.5rem, 7rem);
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.21rem;
+}
+.scheduler-preview-boss select {
+  font-size: 0.75rem;
+}
 @media (max-width: 650px) {
   .utility-dialog .dialog-head {
     align-items: start;

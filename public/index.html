@@ -148,7 +148,7 @@
       <section>
         <h3>개인정보처리방침</h3>
         <p>캐릭터 정보, 파티·보스 설정과 메모, 격파 및 분석 기록은 이 사이트에 접속한 브라우저에 저장합니다. 사이트 자체의 회원가입, 광고 추적 및 서버 동기화 기능은 제공하지 않습니다. 브라우저에서 사이트 데이터를 삭제하면 저장 기록도 삭제됩니다.</p>
-        <p>캐릭터 조회를 요청하면 입력한 닉네임을 넥슨 API에 전달합니다. 조회한 공개 정보는 Cloudflare에 최대 5분간 임시 저장하며, 접속 IP는 조회 한도를 적용하는 데 사용합니다. 스케줄러 실험실에 입력한 개인 API 키는 브라우저에서 넥슨으로 직접 전송하며, 이 사이트에 저장하지 않습니다.</p>
+        <p>캐릭터 조회를 요청하면 입력한 닉네임을 넥슨 API에 전달합니다. 조회한 공개 정보는 Cloudflare에 최대 5분간 임시 저장하며, 접속 IP는 조회 한도를 적용하는 데 사용합니다. 스케줄러 조회에 입력한 개인 API 키는 브라우저에서 넥슨으로 직접 전송하며, 이 사이트에 저장하지 않습니다.</p>
         <p>사이트 접속과 외부 리소스 표시 과정에서 Cloudflare, 넥슨, GitHub로 요청이 전송될 수 있습니다. 설정 파일은 브라우저에서 생성하고 읽습니다.</p>
         <div class="utility-links">
           <a href="https://member.nexon.com/policy/privacy.aspx">넥슨 개인정보처리방침</a>
@@ -394,10 +394,38 @@
         <p id="lookupMsg" role="status" class="muted"></p>
         <div class="actions">
           <button type="button" data-close>닫기</button>
+          <button id="openSchedulerImport" type="button">넥슨 스케줄러에서 가져오기</button>
           <button id="manual" type="button">이름으로 직접 추가</button>
           <button id="lookup" class="primary">조회하고 추가</button>
         </div>
       </form>
+    </dialog>
+    <dialog id="schedulerImportDialog" class="utility-dialog" aria-labelledby="schedulerImportTitle">
+      <header class="dialog-head">
+        <h2 id="schedulerImportTitle">넥슨 스케줄러에서 가져오기</h2>
+        <button type="button" data-close>닫기</button>
+      </header>
+      <form id="schedulerImportAuth">
+        <p class="muted">본인 계정의 Open API 키로 캐릭터를 찾고, 등록 보스와 격파 현황을 미리 볼 수 있어요.</p>
+        <label>메이플스토리 개인 API 키
+          <input id="schedulerImportKey" type="password" maxlength="256"
+            autocomplete="off" spellcheck="false" required />
+        </label>
+        <p class="muted">키는 넥슨 서버에만 전송돼요. <a href="https://openapi.nexon.com/ko/guide/prepare-in-advance/">키 발급 방법</a></p>
+        <div class="actions">
+          <button id="schedulerImportConnect" class="primary" type="submit">캐릭터 불러오기</button>
+        </div>
+      </form>
+      <section id="schedulerImportRoster" aria-label="캐릭터 선택" hidden>
+        <div id="schedulerImportPicker" class="scheduler-import-list"></div>
+        <button id="schedulerImportScan" class="primary" type="button">선택한 캐릭터의 보스 조회</button>
+      </section>
+      <section id="schedulerImportPreview" aria-label="반영 미리보기" hidden>
+        <p class="muted">기존 파티와 메모는 유지하고, 선택한 난이도와 일치하는 격파만 반영해요.</p>
+        <div id="schedulerImportRows" class="scheduler-import-list"></div>
+        <button id="schedulerImportApply" class="primary" type="button">선택한 항목 반영</button>
+      </section>
+      <p id="schedulerImportStatus" class="sync-status" role="status"></p>
     </dialog>
     <dialog id="bulkDialog" aria-labelledby="bulkTitle">
       <div class="bulk-layout">

@@ -11,6 +11,7 @@ import {
 import {
   fetchSchedulerChanges,
   schedulerCandidates,
+  schedulerPlan,
 } from "../public/scheduler.js";
 
 const now = Date.parse("2026-11-20T08:00:00Z");
@@ -73,6 +74,34 @@ test("scheduler proposals match character, cycle and difficulty and never import
   assert.deepEqual(
     schedulerCandidates(completion({ date: "2026-11-21" }), raids, now),
     [],
+  );
+});
+
+test("scheduler import distinguishes registered bosses from completed difficulties", () => {
+  const snapshot = completion({
+    boss_contents: [
+      {
+        content_name: "스우", cycle: "bossWeekly", difficulty: "hard",
+        registration_flag: "true", complete_flag: "false",
+      },
+      {
+        content_name: "스우", cycle: "bossWeekly", difficulty: "normal",
+        registration_flag: "false", complete_flag: "true",
+      },
+      {
+        content_name: "검은마법사", cycle: "bossMonthly", difficulty: "hard",
+        registration_flag: true, complete_flag: true,
+      },
+    ],
+  });
+  const [lotus, blackMage] = schedulerPlan(snapshot, now);
+  assert.deepEqual(lotus.registeredLevels, ["하드"]);
+  assert.equal(lotus.clearLevel, "노멀");
+  assert.deepEqual(blackMage.registeredLevels, ["하드"]);
+  assert.equal(blackMage.clearLevel, "하드");
+  assert.deepEqual(
+    schedulerPlan({ ...snapshot, date: "2026-11-18" }, now).map(({ bossId }) => bossId),
+    ["blackmage"],
   );
 });
 

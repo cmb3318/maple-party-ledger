@@ -7,6 +7,7 @@ import { setupRecords } from "./records.js";
 import { captureHistory } from "./history-data.js";
 import { setupHistory } from "./history-view.js";
 import { setupSettingsTransfer } from "./settings-transfer-view.js";
+import { setupSchedulerImport } from "./scheduler-import-view.js";
 import {
   bosses,
   bossViewOrder,
@@ -835,6 +836,7 @@ function render({
           },
           "primary",
         ),
+        button("넥슨 스케줄러에서 가져오기", () => schedulerImport.open()),
       );
     } else {
       box.append(
@@ -1290,6 +1292,17 @@ const analytics = setupHistory({
   difficultyTag,
 });
 setupSettingsTransfer({ getState: () => state, update, canSave: () => !temporary });
+const schedulerImport = setupSchedulerImport({
+  getState: () => state,
+  update,
+  canSave: () => !temporary,
+  showCharacters: () => { mode = "characters"; },
+  el,
+});
+$("openSchedulerImport").onclick = () => {
+  $("characterDialog").close();
+  schedulerImport.open();
+};
 $("openBulk").onclick = () => {
   $("boardStatus").textContent = "";
   bulk.open();

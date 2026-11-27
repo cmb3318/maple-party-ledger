@@ -1,4 +1,4 @@
-import { period } from "./model.js";
+import { bosses, period, safeImage, validName } from "./model.js";
 
 const base = "https://open.api.nexon.com/maplestory/v1/";
 const normalize = (value) =>
@@ -38,7 +38,9 @@ function schedulerDate(value) {
   return Date.parse(dateOnly ? value + "T00:00:00+09:00" : value);
 }
 
-export function schedulerCandidates(snapshot, raids, now = Date.now()) {
+const isTrue = (flag) => flag === true || flag === "true";
+
+export function schedulerPlan(snapshot, now = Date.now()) {
   const lookedUp = schedulerDate(snapshot?.date);
   if (
     !Number.isFinite(lookedUp) ||
@@ -46,9 +48,39 @@ export function schedulerCandidates(snapshot, raids, now = Date.now()) {
     !Array.isArray(snapshot.boss_contents)
   )
     return [];
-  const completed = snapshot.boss_contents.filter(
-    (row) => row?.complete_flag === "true" || row?.complete_flag === true,
-  );
+  return bosses.flatMap((boss) => {
+    const periodKey = period(boss.cycle, now).key;
+    if (period(boss.cycle, lookedUp).key !== periodKey) return [];
+    const names = [normalize(boss.name), ...(aliases[boss.id] ?? [])];
+    const cycle = boss.cycle === "weekly" ? "bossweekly" : "bossmonthly";
+    const matches = snapshot.boss_contents.filter(
+      (row) =>
+        row &&
+        normalize(row.cycle) === cycle &&
+        names.includes(normalize(row.content_name)),
+    );
+    const levels = (flag) => new Set(
+      matches.filter((row) => isTrue(row[flag]))
+        .map((row) => difficulty.get(normalize(row.difficulty))),
+    );
+    const registeredLevels = [...levels("registration_flag")].filter(
+      (level) => boss.levels.includes(level),
+    );
+    const completed = levels("complete_flag");
+    const clearLevel = completed.size === 1
+      ? boss.levels.find((level) => completed.has(level)) ?? null
+      : null;
+    if (!registeredLevels.length && !clearLevel) return [];
+    return [{
+      bossId: boss.id, bossName: boss.name, cycle: boss.cycle,
+      periodKey, registeredLevels, clearLevel,
+    }];
+  });
+}
+
+export function schedulerCandidates(snapshot, raids, now = Date.now()) {
+  const plans = new Map(schedulerPlan(snapshot, now).map((plan) => [plan.bossId, plan]));
+  if (!plans.size) return [];
   return raids.flatMap((raid) => {
     const { boss, level, character } = raid;
     if (
@@ -58,25 +90,14 @@ export function schedulerCandidates(snapshot, raids, now = Date.now()) {
         normalize(character.profile.world) !== normalize(snapshot.world_name))
     )
       return [];
-    const currentPeriod = period(boss.cycle, now).key;
-    if (period(boss.cycle, lookedUp).key !== currentPeriod) return [];
-    const names = [normalize(boss.name), ...(aliases[boss.id] ?? [])];
-    const cycle = boss.cycle === "weekly" ? "bossweekly" : "bossmonthly";
-    const matches = completed.filter(
-      (row) =>
-        normalize(row.cycle) === cycle &&
-        names.includes(normalize(row.content_name)),
-    );
-    const levels = new Set(
-      matches.map((row) => difficulty.get(normalize(row.difficulty))),
-    );
-    if (levels.size !== 1 || !levels.has(level)) return [];
+    const plan = plans.get(boss.id);
+    if (plan?.clearLevel !== level) return [];
     return [
       {
         name: character.name,
         bossId: boss.id,
         bossName: boss.name,
-        periodKey: currentPeriod,
+        periodKey: plan.periodKey,
         level,
         done: true,
         source: "nexon",
@@ -98,14 +119,8 @@ function reason(status, code) {
   return "넥슨에서 정보를 가져오지 못했어요.";
 }
 
-export async function fetchSchedulerChanges({
-  key,
-  raids,
-  signal,
-  onProgress,
-  fetcher = fetch,
-}) {
-  async function request(path, params) {
+export function schedulerRequest(key, signal, fetcher = fetch) {
+  return async (path, params) => {
     const url = new URL(path, base);
     if (params) url.search = new URLSearchParams(params);
     const res = await fetcher(url, {
@@ -119,13 +134,89 @@ export async function fetchSchedulerChanges({
     if (!res.ok || body?.error)
       throw new NexonError(reason(res.status, body?.error?.name));
     return body;
-  }
+  };
+}
+
+export async function schedulerRoster(request) {
   const roster = await request("character/list");
   if (!Array.isArray(roster?.account_list))
     throw new NexonError("넥슨 계정의 캐릭터 목록을 읽지 못했어요.");
   const owned = roster.account_list.flatMap((account) =>
     Array.isArray(account?.character_list) ? account.character_list : [],
   );
+  const unique = new Map();
+  for (const row of owned) {
+    if (!validName(row?.character_name) || typeof row.ocid !== "string" ||
+        !row.ocid || typeof row.world_name !== "string" || !row.world_name)
+      continue;
+    unique.set(row.ocid, row);
+  }
+  return [...unique.values()];
+}
+
+async function readScheduler(request, owner) {
+  const snapshot = await request("scheduler/character-state", { ocid: owner.ocid });
+  if (
+    !Array.isArray(snapshot?.boss_contents) ||
+    normalize(snapshot.character_name) !== normalize(owner.character_name) ||
+    !Number.isFinite(schedulerDate(snapshot.date)) ||
+    normalize(snapshot.world_name) !== normalize(owner.world_name)
+  )
+    throw new NexonError("스케줄러 응답을 확인할 수 없어요");
+  return snapshot;
+}
+
+export async function scanSchedulerCharacters({
+  request, characters, signal, onProgress = () => {}, now = Date.now(),
+}) {
+  const results = [];
+  for (const [index, owner] of characters.entries()) {
+    signal.throwIfAborted();
+    onProgress(index + 1, characters.length);
+    const name = owner.character_name;
+    const world = owner.world_name;
+    const profile = {
+      name, world, job: String(owner.character_class ?? ""),
+      level: Number(owner.character_level) || null,
+      image: "", fetchedAt: now,
+    };
+    const entry = { profile, plans: [], schedulerError: "", imageError: false };
+    try {
+      const snapshot = await readScheduler(request, owner);
+      entry.plans = schedulerPlan(snapshot, now);
+    } catch (error) {
+      signal.throwIfAborted();
+      entry.schedulerError = schedulerError(error);
+    }
+    await schedulerPause();
+    signal.throwIfAborted();
+    try {
+      const basic = await request("character/basic", { ocid: owner.ocid });
+      const sameCharacter = normalize(basic?.character_name) === normalize(name) &&
+        normalize(basic?.world_name) === normalize(world);
+      profile.image = sameCharacter ? safeImage(basic.character_image) : "";
+      entry.imageError = !profile.image;
+    } catch {
+      signal.throwIfAborted();
+      entry.imageError = true;
+    }
+    results.push(entry);
+    if (index + 1 < characters.length) await schedulerPause();
+  }
+  return results;
+}
+
+const schedulerPause = () => new Promise((resolve) => setTimeout(resolve, 270));
+
+export async function fetchSchedulerChanges({
+  key,
+  raids,
+  signal,
+  onProgress,
+  fetcher = fetch,
+}) {
+  const request = schedulerRequest(key, signal, fetcher);
+  const owned = await schedulerRoster(request);
   const groups = new Map();
   for (const raid of raids) {
     if (!groups.has(raid.character.name)) groups.set(raid.character.name, []);
@@ -144,34 +235,19 @@ export async function fetchSchedulerChanges({
         normalize(character.character_name) === normalize(name) &&
         (!world || normalize(character.world_name) === normalize(world)),
     );
-    const unique = new Map(
-      matches.map((character) => [character.ocid, character]),
-    );
-    if (unique.size !== 1) {
+    if (matches.length !== 1) {
       result.unavailable.push(
         name +
           " · " +
-          (unique.size
+          (matches.length
             ? "월드를 먼저 확인해 주세요"
             : "키의 계정에서 찾을 수 없어요"),
       );
       continue;
     }
-    const owner = unique.values().next().value;
+    const [owner] = matches;
     try {
-      const snapshot = await request("scheduler/character-state", {
-        ocid: owner.ocid,
-      });
-      if (
-        !Array.isArray(snapshot?.boss_contents) ||
-        normalize(snapshot.character_name) !==
-          normalize(owner.character_name) ||
-        !Number.isFinite(schedulerDate(snapshot.date)) ||
-        normalize(snapshot.world_name) !== normalize(owner.world_name)
-      ) {
-        result.unavailable.push(name + " · 스케줄러 응답을 확인할 수 없어요");
-        continue;
-      }
+      const snapshot = await readScheduler(request, owner);
       result.checked += 1;
       result.candidates.push(...schedulerCandidates(snapshot, plans));
     } catch (error) {
@@ -180,7 +256,7 @@ export async function fetchSchedulerChanges({
     } finally {
       // Keep consecutive calls inside the development-key common rate limit.
       if (current < groups.size && !signal.aborted)
-        await new Promise((resolve) => setTimeout(resolve, 270));
+        await schedulerPause();
     }
   }
   return result;
